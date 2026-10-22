@@ -1,0 +1,21 @@
+.voter-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.voter-header {
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.voter-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}

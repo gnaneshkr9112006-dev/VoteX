@@ -1,0 +1,58 @@
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+.dash-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+}
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem;
+}
+.stat-icon {
+  background: rgba(255,255,255,0.05);
+  padding: 1rem;
+  border-radius: 12px;
+}
+.stat-info h3 {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.stat-info p {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: 0.25rem;
+}
+
+.votex-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.votex-table th {
+  text-align: left;
+  padding: 1rem;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-glass);
+  font-weight: 500;
+}
+.votex-table td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-glass);
+}
+.votex-table tr:hover td {
+  background: rgba(255,255,255,0.02);
+}
+.mb-4 { margin-bottom: 1.5rem; }
+.table-responsive { overflow-x: auto; }

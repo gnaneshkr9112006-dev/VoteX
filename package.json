@@ -1,0 +1,35 @@
+{
+  "name": "votex",
+  "version": "1.0.0",
+  "description": "VoteX - Secure Blockchain-Powered Digital Voting System",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "build": "npm run build:server && npm run build:client",
+    "build:server": "cd server && npm run build",
+    "build:client": "cd client && npm run build",
+    "start": "cd server && npm start",
+    "hardhat:node": "npx hardhat node",
+    "hardhat:deploy": "npx hardhat run scripts/deploy.ts --network localhost",
+    "hardhat:compile": "npx hardhat compile",
+    "test": "cd server && npm test",
+    "test:api": "cd server && npm run test:api",
+    "db:setup": "cd server && npx ts-node src/db/setup.ts",
+    "seed:admin": "cd server && npx ts-node src/db/seedAdmin.ts"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@types/node": "^20.11.0",
+    "concurrently": "^8.2.2",
+    "hardhat": "^2.22.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.1",
+    "dotenv": "^16.4.1",
+    "ethers": "^6.11.0"
+  }
+}

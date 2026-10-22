@@ -1,0 +1,375 @@
+.biometric-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 80vh;
+  padding: 1.5rem 1rem;
+}
+
+.biometric-container {
+  width: 100%;
+  max-width: 620px;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 2.25rem 2rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(6, 182, 212, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.biometric-steps-indicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.bio-step {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #64748b;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.3s ease;
+}
+
+.bio-step.active {
+  color: #06b6d4;
+  background: rgba(6, 182, 212, 0.12);
+  border-color: rgba(6, 182, 212, 0.4);
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.2);
+}
+
+.bio-step.completed {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.scanner-frame {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  height: 360px;
+  margin: 0 auto 1.75rem;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #090d16;
+  border: 2px solid rgba(6, 182, 212, 0.3);
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8), 0 0 25px rgba(6, 182, 212, 0.15);
+  transition: border-color 0.4s ease, box-shadow 0.4s ease;
+}
+
+.scanner-frame.matched {
+  border-color: #10b981;
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.35);
+}
+
+.scanner-frame.mismatched {
+  border-color: #ef4444;
+  box-shadow: 0 0 30px rgba(239, 68, 68, 0.4);
+  animation: shake 0.4s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+.camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1); /* Mirror camera for natural feel */
+}
+
+.scanner-overlay-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  transform: scaleX(-1); /* Mirror canvas to align with mirrored video */
+}
+
+/* Futuristic HUD elements */
+.hud-corners {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.hud-corner {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-color: #06b6d4;
+  border-style: solid;
+  transition: border-color 0.3s;
+}
+
+.scanner-frame.matched .hud-corner { border-color: #10b981; }
+.scanner-frame.mismatched .hud-corner { border-color: #ef4444; }
+
+.hud-corner.tl { top: 12px; left: 12px; border-width: 3px 0 0 3px; }
+.hud-corner.tr { top: 12px; right: 12px; border-width: 3px 3px 0 0; }
+.hud-corner.bl { bottom: 12px; left: 12px; border-width: 0 0 3px 3px; }
+.hud-corner.br { bottom: 12px; right: 12px; border-width: 0 3px 3px 0; }
+
+.hud-scanline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #06b6d4, transparent);
+  box-shadow: 0 0 15px #06b6d4;
+  opacity: 0.8;
+  animation: scanlineSweep 2.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.scanner-frame.matched .hud-scanline {
+  background: linear-gradient(90deg, transparent, #10b981, transparent);
+  box-shadow: 0 0 15px #10b981;
+}
+
+.scanner-frame.mismatched .hud-scanline {
+  background: linear-gradient(90deg, transparent, #ef4444, transparent);
+  box-shadow: 0 0 15px #ef4444;
+}
+
+@keyframes scanlineSweep {
+  0% { top: 5%; opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { top: 92%; opacity: 0; }
+}
+
+.hud-reticle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 180px;
+  height: 220px;
+  border: 1.5px dashed rgba(6, 182, 212, 0.4);
+  border-radius: 50% 50% 45% 45%;
+  pointer-events: none;
+  transition: all 0.3s;
+}
+
+.scanner-frame.matched .hud-reticle {
+  border-color: #10b981;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+}
+
+.scanner-frame.mismatched .hud-reticle {
+  border-color: #ef4444;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+}
+
+.scanner-status-badge {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  padding: 0.35rem 0.9rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.telemetry-panel {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.telemetry-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.telemetry-bar-container {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 0.25rem;
+}
+
+.telemetry-bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease, background 0.4s ease;
+}
+
+/* Fingerprint Step */
+.fingerprint-container {
+  display: inline-flex;
+  padding: 2.25rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.02);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin: 1.5rem 0;
+  position: relative;
+}
+
+.fingerprint-container:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: #06b6d4;
+  box-shadow: 0 0 25px rgba(6, 182, 212, 0.25);
+  transform: scale(1.03);
+}
+
+.fingerprint-container.verifying {
+  border-color: #06b6d4;
+  box-shadow: 0 0 35px rgba(6, 182, 212, 0.35);
+  cursor: default;
+}
+
+.fingerprint-container.success {
+  border-color: #10b981;
+  box-shadow: 0 0 35px rgba(16, 185, 129, 0.4);
+}
+
+.fingerprint-container.error {
+  border-color: #ef4444;
+  box-shadow: 0 0 35px rgba(239, 68, 68, 0.4);
+}
+
+.fp-icon {
+  color: #64748b;
+  transition: color 0.4s ease;
+}
+
+.fp-icon.verifying {
+  color: #06b6d4;
+  animation: scan 1.8s infinite;
+}
+
+@keyframes scan {
+  0% { clip-path: inset(100% 0 0 0); }
+  50% { clip-path: inset(0 0 0 0); }
+  100% { clip-path: inset(100% 0 0 0); }
+}
+
+.pulse { animation: pulse 1.5s infinite; }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Anti-Spoofing & Liveness Indicators */
+.liveness-indicator-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(6, 182, 212, 0.25);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.liveness-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.liveness-badge.waiting {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.liveness-badge.passed {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.liveness-badge.failed {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* Security Alert Box */
+.security-alert-box {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(15, 23, 42, 0.9));
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 16px;
+  padding: 1.75rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.security-alert-box h3 {
+  color: #fca5a5;
+  font-size: 1.15rem;
+  margin: 0.75rem 0 0.5rem;
+}
+
+.security-alert-box p {
+  color: #cbd5e1;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+}
+
+.admin-enroll-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  margin-top: 1rem;
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+
