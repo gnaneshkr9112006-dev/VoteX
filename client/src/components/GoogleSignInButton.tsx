@@ -15,7 +15,8 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
   const buttonRef = useRef<HTMLDivElement>(null);
   const [gisLoaded, setGisLoaded] = useState(false);
 
-  const clientId = (String((import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '')).trim();
+  const FALLBACK_CLIENT_ID = '373285287926-3rugssdp9lrgqnd4fk96kg6dhtpt6o9b.apps.googleusercontent.com';
+  const clientId = (String((import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || FALLBACK_CLIENT_ID)).trim();
 
   // Monitor loading of official Google Identity Services library
   useEffect(() => {

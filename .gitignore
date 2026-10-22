@@ -24,3 +24,5 @@ cloudflared.exe
 *.log
 coverage/
 .DS_Store
+.vite/
+*/.vite/
