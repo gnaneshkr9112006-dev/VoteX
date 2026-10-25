@@ -69,15 +69,22 @@ export const createElection = async (req: Request, res: Response) => {
 
 export const listElections = async (req: Request, res: Response) => {
   const adminId = (req as any).user.id;
+  const role = (req as any).user.role;
   try {
-    const [rows] = await pool.query(
-      `SELECT er.*,
-              (SELECT COUNT(*) FROM room_voters WHERE election_id = er.id) as voter_count,
-              (SELECT COUNT(*) FROM room_voters WHERE election_id = er.id AND has_voted = 1) as vote_count,
-              (SELECT COUNT(*) FROM candidates WHERE election_id = er.id) as candidate_count
-       FROM election_rooms er WHERE er.admin_id = ? ORDER BY er.created_at DESC`,
-      [adminId]
-    );
+    const isSuperAdmin = role === 'super_admin';
+    const query = isSuperAdmin
+      ? `SELECT er.*,
+               (SELECT COUNT(*) FROM room_voters WHERE election_id = er.id) as voter_count,
+               (SELECT COUNT(*) FROM room_voters WHERE election_id = er.id AND has_voted = 1) as vote_count,
+               (SELECT COUNT(*) FROM candidates WHERE election_id = er.id) as candidate_count
+        FROM election_rooms er ORDER BY er.created_at DESC`
+      : `SELECT er.*,
+               (SELECT COUNT(*) FROM room_voters WHERE election_id = er.id) as voter_count,
+               (SELECT COUNT(*) FROM room_voters WHERE election_id = er.id AND has_voted = 1) as vote_count,
+               (SELECT COUNT(*) FROM candidates WHERE election_id = er.id) as candidate_count
+        FROM election_rooms er WHERE er.admin_id = ? ORDER BY er.created_at DESC`;
+    const params = isSuperAdmin ? [] : [adminId];
+    const [rows] = await pool.query(query, params);
     res.json(rows);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -86,16 +93,23 @@ export const listElections = async (req: Request, res: Response) => {
 
 export const getElection = async (req: Request, res: Response) => {
   const adminId = (req as any).user.id;
+  const role = (req as any).user.role;
   const electionId = req.params.id;
   try {
-    const [rows]: any = await pool.query(
-      `SELECT er.*,
-              (SELECT COUNT(*) FROM room_voters WHERE election_id = er.id) as voter_count,
-              (SELECT COUNT(*) FROM room_voters WHERE election_id = er.id AND has_voted = 1) as vote_count,
-              (SELECT COUNT(*) FROM candidates WHERE election_id = er.id) as candidate_count
-       FROM election_rooms er WHERE er.id = ? AND er.admin_id = ?`,
-      [electionId, adminId]
-    );
+    const isSuperAdmin = role === 'super_admin';
+    const query = isSuperAdmin
+      ? `SELECT er.*,
+               (SELECT COUNT(*) FROM room_voters WHERE election_id = er.id) as voter_count,
+               (SELECT COUNT(*) FROM room_voters WHERE election_id = er.id AND has_voted = 1) as vote_count,
+               (SELECT COUNT(*) FROM candidates WHERE election_id = er.id) as candidate_count
+        FROM election_rooms er WHERE er.id = ?`
+      : `SELECT er.*,
+               (SELECT COUNT(*) FROM room_voters WHERE election_id = er.id) as voter_count,
+               (SELECT COUNT(*) FROM room_voters WHERE election_id = er.id AND has_voted = 1) as vote_count,
+               (SELECT COUNT(*) FROM candidates WHERE election_id = er.id) as candidate_count
+        FROM election_rooms er WHERE er.id = ? AND er.admin_id = ?`;
+    const params = isSuperAdmin ? [electionId] : [electionId, adminId];
+    const [rows]: any = await pool.query(query, params);
     if (rows.length === 0) return res.status(404).json({ message: 'Election not found or access denied' });
     res.json(rows[0]);
   } catch (error) {
@@ -105,24 +119,29 @@ export const getElection = async (req: Request, res: Response) => {
 
 export const updateElection = async (req: Request, res: Response) => {
   const adminId = (req as any).user.id;
+  const role = (req as any).user.role;
   const electionId = req.params.id;
   const { title, startTime, endTime } = req.body;
 
   try {
-    // Verify admin owns this election
-    const [existing]: any = await pool.query(
-      'SELECT status FROM election_rooms WHERE id = ? AND admin_id = ?',
-      [electionId, adminId]
-    );
+    const isSuperAdmin = role === 'super_admin';
+    const query = isSuperAdmin
+      ? 'SELECT status FROM election_rooms WHERE id = ?'
+      : 'SELECT status FROM election_rooms WHERE id = ? AND admin_id = ?';
+    const params = isSuperAdmin ? [electionId] : [electionId, adminId];
+    const [existing]: any = await pool.query(query, params);
     if (existing.length === 0) return res.status(404).json({ message: 'Election not found or access denied' });
     if (existing[0].status !== 'draft') {
       return res.status(400).json({ message: 'Cannot modify an active or closed election' });
     }
 
-    await pool.query(
-      'UPDATE election_rooms SET title = ?, start_time = ?, end_time = ? WHERE id = ? AND admin_id = ?',
-      [title, startTime, endTime, electionId, adminId]
-    );
+    const updateQuery = isSuperAdmin
+      ? 'UPDATE election_rooms SET title = ?, start_time = ?, end_time = ? WHERE id = ?'
+      : 'UPDATE election_rooms SET title = ?, start_time = ?, end_time = ? WHERE id = ? AND admin_id = ?';
+    const updateParams = isSuperAdmin
+      ? [title, startTime, endTime, electionId]
+      : [title, startTime, endTime, electionId, adminId];
+    await pool.query(updateQuery, updateParams);
 
     // Audit log
     await pool.query(
@@ -138,12 +157,15 @@ export const updateElection = async (req: Request, res: Response) => {
 
 export const closeElection = async (req: Request, res: Response) => {
   const adminId = (req as any).user.id;
+  const role = (req as any).user.role;
   const electionId = req.params.id;
   try {
-    const [rows]: any = await pool.query(
-      'SELECT status, room_number FROM election_rooms WHERE id = ? AND admin_id = ?',
-      [electionId, adminId]
-    );
+    const isSuperAdmin = role === 'super_admin';
+    const query = isSuperAdmin
+      ? 'SELECT status, room_number FROM election_rooms WHERE id = ?'
+      : 'SELECT status, room_number FROM election_rooms WHERE id = ? AND admin_id = ?';
+    const params = isSuperAdmin ? [electionId] : [electionId, adminId];
+    const [rows]: any = await pool.query(query, params);
     if (rows.length === 0) return res.status(404).json({ message: 'Election not found or access denied' });
     if (rows[0].status === 'closed' || rows[0].status === 'published') {
       return res.status(400).json({ message: 'Election is already closed' });
@@ -165,12 +187,15 @@ export const closeElection = async (req: Request, res: Response) => {
 
 export const publishResults = async (req: Request, res: Response) => {
   const adminId = (req as any).user.id;
+  const role = (req as any).user.role;
   const electionId = req.params.id;
   try {
-    const [rows]: any = await pool.query(
-      'SELECT status, room_number, end_time FROM election_rooms WHERE id = ? AND admin_id = ?',
-      [electionId, adminId]
-    );
+    const isSuperAdmin = role === 'super_admin';
+    const query = isSuperAdmin
+      ? 'SELECT status, room_number, end_time FROM election_rooms WHERE id = ?'
+      : 'SELECT status, room_number, end_time FROM election_rooms WHERE id = ? AND admin_id = ?';
+    const params = isSuperAdmin ? [electionId] : [electionId, adminId];
+    const [rows]: any = await pool.query(query, params);
     if (rows.length === 0) return res.status(404).json({ message: 'Election not found or access denied' });
 
     const election = rows[0];
@@ -206,13 +231,15 @@ export const publishResults = async (req: Request, res: Response) => {
 
 export const getElectionStats = async (req: Request, res: Response) => {
   const adminId = (req as any).user.id;
+  const role = (req as any).user.role;
   const electionId = req.params.id;
   try {
-    // Verify admin owns this election
-    const [elections]: any = await pool.query(
-      'SELECT id FROM election_rooms WHERE id = ? AND admin_id = ?',
-      [electionId, adminId]
-    );
+    const isSuperAdmin = role === 'super_admin';
+    const query = isSuperAdmin
+      ? 'SELECT id FROM election_rooms WHERE id = ?'
+      : 'SELECT id FROM election_rooms WHERE id = ? AND admin_id = ?';
+    const params = isSuperAdmin ? [electionId] : [electionId, adminId];
+    const [elections]: any = await pool.query(query, params);
     if (elections.length === 0) return res.status(404).json({ message: 'Election not found or access denied' });
 
     const [voterStats]: any = await pool.query(

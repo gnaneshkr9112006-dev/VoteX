@@ -28,9 +28,11 @@ const VoterRegistrationPage = () => {
   const [previewPhoto, setPreviewPhoto] = useState<{ name: string; photo: string } | null>(null);
   const [electionFilter, setElectionFilter] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const photoFileInputRef = useRef<HTMLInputElement>(null);
 
   // Admin Photo Enrollment Modal State
   const [enrollModalVoter, setEnrollModalVoter] = useState<any | null>(null);
+  const [existingPhotoSrc, setExistingPhotoSrc] = useState<string | null>(null);
   const [photoMode, setPhotoMode] = useState<'upload' | 'camera'>('upload');
   const [uploadedPhotoSrc, setUploadedPhotoSrc] = useState<string | null>(null);
   const [extractedDescriptor, setExtractedDescriptor] = useState<number[] | null>(null);
@@ -123,9 +125,10 @@ const VoterRegistrationPage = () => {
     }
   };
 
-  // Open Admin Photo Enrollment Modal
+  // Open Admin Photo Enrollment Modal (handles initial enroll and photo updates)
   const openPhotoEnrollModal = (voter: any) => {
     setEnrollModalVoter(voter);
+    setExistingPhotoSrc(voter.face_photo || null);
     setUploadedPhotoSrc(null);
     setExtractedDescriptor(null);
     setFaceStatusMsg(null);
@@ -139,8 +142,10 @@ const VoterRegistrationPage = () => {
     }
     setCameraActive(false);
     setEnrollModalVoter(null);
+    setExistingPhotoSrc(null);
     setUploadedPhotoSrc(null);
     setExtractedDescriptor(null);
+    setFaceStatusMsg(null);
   };
 
   // Switch to camera
@@ -159,6 +164,41 @@ const VoterRegistrationPage = () => {
     }
   };
 
+  // Compress and normalize portrait photo before facial extraction & transmission
+  const compressImageFile = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const rawDataUrl = event.target?.result as string;
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 640;
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return resolve(rawDataUrl);
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.88));
+        };
+        img.onerror = () => resolve(rawDataUrl);
+        img.src = rawDataUrl;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   // Process image for face detection & descriptor extraction
   const processImageForFace = async (dataUrl: string) => {
     setProcessingPhoto(true);
@@ -173,10 +213,17 @@ const VoterRegistrationPage = () => {
         img.onerror = reject;
       });
 
-      const detection = await faceapi
-        .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.45 }))
+      let detection = await faceapi
+        .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.40 }))
         .withFaceLandmarks(true)
         .withFaceDescriptor();
+
+      if (!detection || !detection.descriptor) {
+        detection = await faceapi
+          .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.28 }))
+          .withFaceLandmarks(true)
+          .withFaceDescriptor();
+      }
 
       if (!detection || !detection.descriptor) {
         setFaceStatusMsg('⚠️ No clear face detected. Please ensure the image contains a clear, front-facing portrait.');
@@ -191,16 +238,19 @@ const VoterRegistrationPage = () => {
     }
   };
 
-  const handlePhotoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = event.target?.result as string;
-      setUploadedPhotoSrc(result);
-      processImageForFace(result);
-    };
-    reader.readAsDataURL(file);
+    try {
+      setProcessingPhoto(true);
+      setFaceStatusMsg('Preparing image and extracting facial geometry...');
+      const compressed = await compressImageFile(file);
+      setUploadedPhotoSrc(compressed);
+      await processImageForFace(compressed);
+    } catch (err: any) {
+      setFaceStatusMsg('Error reading image: ' + (err.message || 'Unknown error'));
+      setProcessingPhoto(false);
+    }
   };
 
   const captureModalCameraSnapshot = () => {
@@ -225,12 +275,18 @@ const VoterRegistrationPage = () => {
   const saveOfficialBiometrics = async () => {
     if (!enrollModalVoter || !selectedElection || !extractedDescriptor) return;
     setSavingBiometrics(true);
+    const isUpdate = Boolean(enrollModalVoter.has_face_enrolled || enrollModalVoter.face_photo);
     try {
       await votersApi.enrollVoterFace(selectedElection, enrollModalVoter.voter_id, {
         faceDescriptor: extractedDescriptor,
         photoBase64: uploadedPhotoSrc || undefined
       });
-      setToast({ message: `Official biometrics enrolled for ${enrollModalVoter.full_name}!`, type: 'success' });
+      setToast({
+        message: isUpdate
+          ? `Official photo and biometrics updated for ${enrollModalVoter.full_name}!`
+          : `Official biometrics enrolled for ${enrollModalVoter.full_name}!`,
+        type: 'success'
+      });
       closePhotoEnrollModal();
       fetchVoters();
     } catch (err: any) {
@@ -377,16 +433,44 @@ const VoterRegistrationPage = () => {
         </div>
       </div>
 
-      {/* Admin Official Photo Enrollment Modal */}
+      {/* Admin Official Photo Enrollment / Update Modal */}
       <Modal
         isOpen={!!enrollModalVoter}
         onClose={closePhotoEnrollModal}
-        title={`Enroll Official Biometrics: ${enrollModalVoter?.full_name} (${enrollModalVoter?.voter_id})`}
+        title={`${enrollModalVoter?.has_face_enrolled || enrollModalVoter?.face_photo ? 'Update' : 'Enroll'} Official Biometrics: ${enrollModalVoter?.full_name} (${enrollModalVoter?.voter_id})`}
       >
         <div style={{ marginBottom: '1.25rem' }}>
           <p className="text-secondary" style={{ fontSize: '0.9rem', marginBottom: '1rem' }}>
-            Register the official reference face for this voter. On voting day, the voter must match this photo to be granted ballot access.
+            Register or update the official reference face for this voter. On voting day, the voter must match this photo to be granted ballot access.
           </p>
+
+          {/* If updating, display currently certified photo */}
+          {(enrollModalVoter?.has_face_enrolled || enrollModalVoter?.face_photo) && existingPhotoSrc && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1rem',
+              background: 'rgba(16, 185, 129, 0.08)',
+              border: '1px solid rgba(16, 185, 129, 0.25)',
+              borderRadius: '12px',
+              padding: '0.85rem 1rem',
+              marginBottom: '1.25rem'
+            }}>
+              <img
+                src={existingPhotoSrc}
+                alt="Current Reference"
+                style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #10b981' }}
+              />
+              <div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <CheckCircle2 size={14} /> Currently Certified Reference Photo
+                </div>
+                <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '0.15rem' }}>
+                  Select or capture a new photo below to update this voter's biometric vector.
+                </div>
+              </div>
+            </div>
+          )}
 
           <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem' }}>
             <button
@@ -425,18 +509,20 @@ const VoterRegistrationPage = () => {
               background: 'rgba(255, 255, 255, 0.02)'
             }}>
               <input
+                ref={photoFileInputRef}
                 type="file"
                 accept="image/*"
                 id="admin-voter-photo-file"
                 style={{ display: 'none' }}
                 onChange={handlePhotoFileChange}
+                onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
               />
               <label htmlFor="admin-voter-photo-file" className="btn btn-secondary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Upload size={16} />
-                <span>Select Official Photo (JPG, PNG)</span>
+                <span>{enrollModalVoter?.has_face_enrolled ? 'Select Replacement Photo (JPG, PNG)' : 'Select Official Photo (JPG, PNG)'}</span>
               </label>
               <p className="text-secondary" style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>
-                Passport photo, Driver's License photo, or clear portrait.
+                Passport photo, Driver's License photo, or clear portrait. High-res images are automatically optimized.
               </p>
             </div>
           )}
@@ -530,7 +616,11 @@ const VoterRegistrationPage = () => {
               style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
             >
               <ShieldCheck size={16} />
-              <span>{savingBiometrics ? 'Saving Biometrics...' : 'Save Official Biometrics'}</span>
+              <span>
+                {savingBiometrics
+                  ? 'Saving...'
+                  : (enrollModalVoter?.has_face_enrolled || enrollModalVoter?.face_photo ? 'Update Official Biometrics' : 'Save Official Biometrics')}
+              </span>
             </button>
           </div>
         </div>

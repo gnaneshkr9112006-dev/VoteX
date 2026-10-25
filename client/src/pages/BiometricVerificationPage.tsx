@@ -23,8 +23,8 @@ import {
 import Toast from '../components/Toast';
 import './Biometric.css';
 
-// Strict Euclidean distance threshold for high-security voting (<= 0.48 is genuine match)
-const MATCH_THRESHOLD = 0.48;
+// Calibrated Euclidean distance threshold for high-security voting (<= 0.54 is genuine match)
+const MATCH_THRESHOLD = 0.54;
 
 // Helper: 2D Euclidean distance between landmark points
 const dist2D = (p1: { x: number; y: number }, p2: { x: number; y: number }) => {
@@ -84,8 +84,11 @@ const BiometricVerificationPage = () => {
   const [blinkCount, setBlinkCount] = useState(0);
   const [earValue, setEarValue] = useState<number | null>(null);
   const eyeClosedRef = useRef(false);
+  const earHistoryRef = useRef<number[]>([]);
   const nosePositionsRef = useRef<{ x: number; y: number }[]>([]);
   const [motionConfirmed, setMotionConfirmed] = useState(false);
+  const [staticWarning, setStaticWarning] = useState(false);
+  const staticFrameCountRef = useRef(0);
 
   // Fingerprint State
   const [fpStatus, setFpStatus] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle');
@@ -249,39 +252,68 @@ const BiometricVerificationPage = () => {
                 const landmarks = resized.landmarks;
 
                 // --- ANTI-SPOOFING LIVENESS CHECK ---
-                // 1. Calculate Eye Aspect Ratio (EAR)
+                // 1. Calculate Eye Aspect Ratio (EAR) with adaptive baseline tracking
                 const currentEAR = calculateEAR(landmarks);
                 setEarValue(currentEAR);
 
+                if (currentEAR > 0.16) {
+                  earHistoryRef.current.push(currentEAR);
+                  if (earHistoryRef.current.length > 25) earHistoryRef.current.shift();
+                }
+                const baselineEAR = earHistoryRef.current.length >= 5
+                  ? (earHistoryRef.current.reduce((a, b) => a + b, 0) / earHistoryRef.current.length)
+                  : 0.25;
+
+                const closeThreshold = Math.max(0.16, baselineEAR * 0.76);
+                const openThreshold = Math.max(0.20, baselineEAR * 0.88);
+
                 // Detect natural blink transition (open -> closed -> open)
-                if (currentEAR < 0.20 && !eyeClosedRef.current) {
+                if (currentEAR < closeThreshold && !eyeClosedRef.current) {
                   eyeClosedRef.current = true;
-                } else if (currentEAR > 0.25 && eyeClosedRef.current) {
+                } else if (currentEAR > openThreshold && eyeClosedRef.current) {
                   eyeClosedRef.current = false;
                   setBlinkCount(prev => {
                     const updated = prev + 1;
-                    if (updated >= 1) {
-                      setLivenessStage('blink_detected');
-                    }
+                    setLivenessStage('blink_detected');
+                    setStaticWarning(false);
+                    staticFrameCountRef.current = 0;
                     return updated;
                   });
                 }
 
-                // 2. Track micro-movements to reject static photos
+                // 2. Track 3D head movement to reject printed 2D static photos
                 const nosePos = landmarks.positions[30];
                 const hist = nosePositionsRef.current;
                 hist.push({ x: nosePos.x, y: nosePos.y });
-                if (hist.length > 20) hist.shift();
+                if (hist.length > 25) hist.shift();
 
                 if (hist.length >= 10) {
                   const xDiffs = hist.map(p => p.x);
                   const yDiffs = hist.map(p => p.y);
                   const xSpan = Math.max(...xDiffs) - Math.min(...xDiffs);
                   const ySpan = Math.max(...yDiffs) - Math.min(...yDiffs);
-                  if (xSpan > 1.2 || ySpan > 1.2) {
+                  // Real human movement typically spans >= 5.5px, whereas camera noise on a still photo is < 1.6px
+                  if (xSpan >= 5.5 || ySpan >= 4.5) {
                     setMotionConfirmed(true);
+                    setStaticWarning(false);
+                    staticFrameCountRef.current = 0;
+                  } else {
+                    staticFrameCountRef.current += 1;
+                    if (staticFrameCountRef.current > 45 && blinkCount === 0) {
+                      setStaticWarning(true);
+                    }
                   }
                 }
+
+                // Subtle eye landmark tracking points
+                ctx.fillStyle = eyeClosedRef.current ? '#f59e0b' : '#06b6d4';
+                const eyeIndices = [36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47];
+                eyeIndices.forEach(idx => {
+                  const pt = landmarks.positions[idx];
+                  ctx.beginPath();
+                  ctx.arc(pt.x, pt.y, 1.8, 0, 2 * Math.PI);
+                  ctx.fill();
+                });
 
                 // Draw modern cybernetic corner brackets
                 ctx.strokeStyle = verificationStatus === 'matched' ? '#10b981' :
@@ -341,7 +373,7 @@ const BiometricVerificationPage = () => {
         window.cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [cameraActive, engineLoading, currentStep, verificationStatus]);
+  }, [cameraActive, engineLoading, currentStep, verificationStatus, blinkCount]);
 
   // 5. VERIFY FACE (Compare live webcam face against administrator-enrolled descriptor)
   const handleVerifyFace = async () => {
@@ -357,9 +389,10 @@ const BiometricVerificationPage = () => {
     }
 
     // Anti-Spoofing Liveness Enforcement
-    if (blinkCount === 0 && !motionConfirmed) {
+    const isLive = (blinkCount > 0 || motionConfirmed) && !staticWarning;
+    if (!isLive) {
       setToast({
-        message: 'Anti-Spoofing Check: Please blink your eyes naturally at the camera to prove live human presence.',
+        message: 'Anti-Spoofing Check: Please blink your eyes naturally or turn your head slightly to confirm live human presence.',
         type: 'info'
       });
       return;
@@ -609,23 +642,62 @@ const BiometricVerificationPage = () => {
 
             {/* Anti-Spoofing & Liveness HUD Status */}
             {hasFaceEnrolled && (
-              <div className="liveness-indicator-box">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#cbd5e1' }}>
-                  <Eye size={16} color="#06b6d4" />
-                  <span>Anti-Spoofing Liveness:</span>
+              <div className="liveness-indicator-box" style={{ flexDirection: 'column', gap: '0.65rem', alignItems: 'stretch' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#cbd5e1' }}>
+                    <Eye size={16} color="#06b6d4" />
+                    <span style={{ fontWeight: 600 }}>Anti-Spoofing Liveness Engine:</span>
+                  </div>
+                  <div className={`liveness-badge ${(blinkCount > 0 || motionConfirmed) && !staticWarning ? 'passed' : staticWarning ? 'failed' : 'waiting'}`}>
+                    {(blinkCount > 0 || motionConfirmed) && !staticWarning ? (
+                      <>
+                        <CheckCircle2 size={13} color="#10b981" />
+                        <span>Live Human Subject Certified</span>
+                      </>
+                    ) : staticWarning ? (
+                      <>
+                        <AlertTriangle size={13} color="#ef4444" />
+                        <span>Static Photo Suspected</span>
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw size={13} className="pulse" color="#f59e0b" />
+                        <span>Awaiting Natural Movement</span>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <div className={`liveness-badge ${blinkCount > 0 || motionConfirmed ? 'passed' : 'waiting'}`}>
-                  {blinkCount > 0 || motionConfirmed ? (
-                    <>
-                      <CheckCircle2 size={13} color="#10b981" />
-                      <span>Live Human Presence Verified</span>
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw size={13} className="pulse" color="#f59e0b" />
-                      <span>Please blink naturally</span>
-                    </>
-                  )}
+
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <span style={{
+                    fontSize: '0.78rem',
+                    padding: '0.2rem 0.55rem',
+                    borderRadius: '6px',
+                    background: blinkCount > 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                    color: blinkCount > 0 ? '#10b981' : '#94a3b8',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    border: `1px solid ${blinkCount > 0 ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255, 255, 255, 0.08)'}`
+                  }}>
+                    {blinkCount > 0 ? <CheckCircle2 size={12} color="#10b981" /> : <Eye size={12} />}
+                    Blink Test: {blinkCount > 0 ? `${blinkCount} Detected ✓` : 'Blink eyes naturally'}
+                  </span>
+
+                  <span style={{
+                    fontSize: '0.78rem',
+                    padding: '0.2rem 0.55rem',
+                    borderRadius: '6px',
+                    background: motionConfirmed ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                    color: motionConfirmed ? '#10b981' : '#94a3b8',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    border: `1px solid ${motionConfirmed ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255, 255, 255, 0.08)'}`
+                  }}>
+                    {motionConfirmed ? <CheckCircle2 size={12} color="#10b981" /> : <RefreshCw size={12} />}
+                    3D Motion: {motionConfirmed ? 'Natural Movement Confirmed ✓' : 'Turn head slightly'}
+                  </span>
                 </div>
               </div>
             )}

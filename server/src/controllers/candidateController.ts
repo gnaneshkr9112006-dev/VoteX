@@ -3,6 +3,7 @@ import { pool } from '../db/connection';
 
 export const addCandidate = async (req: Request, res: Response) => {
   const adminId = (req as any).user.id;
+  const role = (req as any).user.role;
   const electionId = req.params.id;
   let { candidateCode, name, party, bio } = req.body;
 
@@ -11,11 +12,12 @@ export const addCandidate = async (req: Request, res: Response) => {
   }
 
   try {
-    // Verify admin owns this election
-    const [elections]: any = await pool.query(
-      'SELECT id, status, title FROM election_rooms WHERE id = ? AND admin_id = ?',
-      [electionId, adminId]
-    );
+    const isSuperAdmin = role === 'super_admin';
+    const query = isSuperAdmin
+      ? 'SELECT id, status, title FROM election_rooms WHERE id = ?'
+      : 'SELECT id, status, title FROM election_rooms WHERE id = ? AND admin_id = ?';
+    const params = isSuperAdmin ? [electionId] : [electionId, adminId];
+    const [elections]: any = await pool.query(query, params);
     if (elections.length === 0) {
       return res.status(404).json({ message: 'Election not found or access denied' });
     }
@@ -78,15 +80,17 @@ export const addCandidate = async (req: Request, res: Response) => {
 
 export const editCandidate = async (req: Request, res: Response) => {
   const adminId = (req as any).user.id;
+  const role = (req as any).user.role;
   const { id: electionId, candidateId } = req.params;
   const { name, party, bio } = req.body;
 
   try {
-    // Verify admin owns this election
-    const [elections]: any = await pool.query(
-      'SELECT id FROM election_rooms WHERE id = ? AND admin_id = ?',
-      [electionId, adminId]
-    );
+    const isSuperAdmin = role === 'super_admin';
+    const query = isSuperAdmin
+      ? 'SELECT id FROM election_rooms WHERE id = ?'
+      : 'SELECT id FROM election_rooms WHERE id = ? AND admin_id = ?';
+    const params = isSuperAdmin ? [electionId] : [electionId, adminId];
+    const [elections]: any = await pool.query(query, params);
     if (elections.length === 0) {
       return res.status(404).json({ message: 'Election not found or access denied' });
     }
@@ -110,14 +114,16 @@ export const editCandidate = async (req: Request, res: Response) => {
 
 export const removeCandidate = async (req: Request, res: Response) => {
   const adminId = (req as any).user.id;
+  const role = (req as any).user.role;
   const { id: electionId, candidateId } = req.params;
 
   try {
-    // Verify admin owns this election
-    const [elections]: any = await pool.query(
-      'SELECT id, status FROM election_rooms WHERE id = ? AND admin_id = ?',
-      [electionId, adminId]
-    );
+    const isSuperAdmin = role === 'super_admin';
+    const query = isSuperAdmin
+      ? 'SELECT id, status FROM election_rooms WHERE id = ?'
+      : 'SELECT id, status FROM election_rooms WHERE id = ? AND admin_id = ?';
+    const params = isSuperAdmin ? [electionId] : [electionId, adminId];
+    const [elections]: any = await pool.query(query, params);
     if (elections.length === 0) {
       return res.status(404).json({ message: 'Election not found or access denied' });
     }

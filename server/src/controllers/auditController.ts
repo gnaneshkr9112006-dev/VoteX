@@ -5,13 +5,15 @@ import crypto from 'crypto';
 
 export const getAuditLog = async (req: Request, res: Response) => {
   const adminId = (req as any).user.id;
+  const role = (req as any).user.role;
   const electionId = req.params.id;
   try {
-    // Verify admin owns this election
-    const [elections]: any = await pool.query(
-      'SELECT id FROM election_rooms WHERE id = ? AND admin_id = ?',
-      [electionId, adminId]
-    );
+    const isSuperAdmin = role === 'super_admin';
+    const query = isSuperAdmin
+      ? 'SELECT id FROM election_rooms WHERE id = ?'
+      : 'SELECT id FROM election_rooms WHERE id = ? AND admin_id = ?';
+    const params = isSuperAdmin ? [electionId] : [electionId, adminId];
+    const [elections]: any = await pool.query(query, params);
     if (elections.length === 0) {
       return res.status(404).json({ message: 'Election not found or access denied' });
     }

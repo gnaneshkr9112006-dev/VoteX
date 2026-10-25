@@ -2,8 +2,21 @@ import { Request, Response } from 'express';
 import { pool } from '../db/connection';
 import { parse } from 'csv-parse/sync';
 
+const verifyElectionAccess = async (electionId: string, adminId: number, role?: string): Promise<boolean> => {
+  if (role === 'super_admin') {
+    const [elections]: any = await pool.query('SELECT id FROM election_rooms WHERE id = ?', [electionId]);
+    return elections.length > 0;
+  }
+  const [elections]: any = await pool.query(
+    'SELECT id FROM election_rooms WHERE id = ? AND admin_id = ?',
+    [electionId, adminId]
+  );
+  return elections.length > 0;
+};
+
 export const registerVoter = async (req: Request, res: Response) => {
   const adminId = (req as any).user.id;
+  const role = (req as any).user.role;
   const electionId = req.params.id;
   const { voterId, fullName, email } = req.body;
 
@@ -12,12 +25,8 @@ export const registerVoter = async (req: Request, res: Response) => {
   }
 
   try {
-    // Verify admin owns this election
-    const [elections]: any = await pool.query(
-      'SELECT id FROM election_rooms WHERE id = ? AND admin_id = ?',
-      [electionId, adminId]
-    );
-    if (elections.length === 0) {
+    const hasAccess = await verifyElectionAccess(electionId, adminId, role);
+    if (!hasAccess) {
       return res.status(404).json({ message: 'Election not found or access denied' });
     }
 
@@ -63,18 +72,15 @@ export const registerVoter = async (req: Request, res: Response) => {
 
 export const importVoters = async (req: Request, res: Response) => {
   const adminId = (req as any).user.id;
+  const role = (req as any).user.role;
   const electionId = req.params.id;
   const csvData = req.file?.buffer.toString();
 
   if (!csvData) return res.status(400).json({ message: 'No file uploaded' });
 
   try {
-    // Verify admin owns this election
-    const [elections]: any = await pool.query(
-      'SELECT id FROM election_rooms WHERE id = ? AND admin_id = ?',
-      [electionId, adminId]
-    );
-    if (elections.length === 0) {
+    const hasAccess = await verifyElectionAccess(electionId, adminId, role);
+    if (!hasAccess) {
       return res.status(404).json({ message: 'Election not found or access denied' });
     }
 
@@ -161,14 +167,11 @@ export const importVoters = async (req: Request, res: Response) => {
 
 export const listVoters = async (req: Request, res: Response) => {
   const adminId = (req as any).user.id;
+  const role = (req as any).user.role;
   const electionId = req.params.id;
   try {
-    // Verify admin owns this election
-    const [elections]: any = await pool.query(
-      'SELECT id FROM election_rooms WHERE id = ? AND admin_id = ?',
-      [electionId, adminId]
-    );
-    if (elections.length === 0) {
+    const hasAccess = await verifyElectionAccess(electionId, adminId, role);
+    if (!hasAccess) {
       return res.status(404).json({ message: 'Election not found or access denied' });
     }
 
@@ -183,7 +186,7 @@ export const listVoters = async (req: Request, res: Response) => {
     // Add computed flag for clean client consumption
     const enriched = (rows as any[]).map(r => ({
       ...r,
-      has_face_enrolled: !!r.face_descriptor
+      has_face_enrolled: Boolean(r.face_descriptor && r.face_descriptor !== 'null' && r.face_descriptor !== '')
     }));
     res.json(enriched);
   } catch (error) {
@@ -193,6 +196,7 @@ export const listVoters = async (req: Request, res: Response) => {
 
 export const enrollVoterFaceAdmin = async (req: Request, res: Response) => {
   const adminId = (req as any).user.id;
+  const role = (req as any).user.role;
   const { id: electionId, voterId } = req.params;
   const { faceDescriptor, facePhoto, photoBase64 } = req.body;
 
@@ -201,26 +205,42 @@ export const enrollVoterFaceAdmin = async (req: Request, res: Response) => {
   }
 
   try {
-    const [elections]: any = await pool.query(
-      'SELECT id FROM election_rooms WHERE id = ? AND admin_id = ?',
-      [electionId, adminId]
-    );
-    if (elections.length === 0) {
+    const hasAccess = await verifyElectionAccess(electionId, adminId, role);
+    if (!hasAccess) {
       return res.status(404).json({ message: 'Election not found or access denied' });
     }
 
+    const [voterRows]: any = await pool.query('SELECT id, full_name, face_photo FROM voters WHERE voter_id = ?', [voterId]);
+    if (voterRows.length === 0) {
+      return res.status(404).json({ message: `Voter ${voterId} not found` });
+    }
+    const voter = voterRows[0];
+    const isUpdate = Boolean(voter.face_photo);
+
     const descriptorStr = typeof faceDescriptor === 'string' ? faceDescriptor : JSON.stringify(faceDescriptor);
+    const photoToSave = facePhoto || photoBase64 || null;
+
     await pool.query(
       'UPDATE voters SET face_descriptor = ?, face_photo = ? WHERE voter_id = ?',
-      [descriptorStr, facePhoto || photoBase64 || null, voterId]
+      [descriptorStr, photoToSave, voterId]
+    );
+
+    // If voter's photo was updated and they haven't voted yet, reset proof hash so they re-verify with new face
+    await pool.query(
+      'UPDATE room_voters SET verification_proof_hash = NULL WHERE election_id = ? AND voter_id = ? AND has_voted = 0',
+      [electionId, voter.id]
     );
 
     await pool.query(
       'INSERT INTO audit_logs (admin_id, election_id, action, details, ip_address) VALUES (?, ?, ?, ?, ?)',
-      [adminId, electionId, 'BIOMETRIC_ENROLLED', `Biometric face profile enrolled for voter ${voterId}`, req.ip]
+      [adminId, electionId, isUpdate ? 'BIOMETRIC_UPDATED' : 'BIOMETRIC_ENROLLED', `Biometric face profile ${isUpdate ? 'updated' : 'enrolled'} for voter ${voterId}`, req.ip]
     );
 
-    res.json({ message: 'Face enrolled successfully', voterId });
+    res.json({
+      message: isUpdate ? 'Face biometrics updated successfully' : 'Face enrolled successfully',
+      voterId,
+      isUpdate
+    });
   } catch (error) {
     console.error('Enroll voter face error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -229,15 +249,12 @@ export const enrollVoterFaceAdmin = async (req: Request, res: Response) => {
 
 export const removeVoter = async (req: Request, res: Response) => {
   const adminId = (req as any).user.id;
+  const role = (req as any).user.role;
   const { id: electionId, voterId } = req.params;
 
   try {
-    // Verify admin owns this election
-    const [elections]: any = await pool.query(
-      'SELECT id FROM election_rooms WHERE id = ? AND admin_id = ?',
-      [electionId, adminId]
-    );
-    if (elections.length === 0) {
+    const hasAccess = await verifyElectionAccess(electionId, adminId, role);
+    if (!hasAccess) {
       return res.status(404).json({ message: 'Election not found or access denied' });
     }
 

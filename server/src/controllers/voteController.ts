@@ -89,7 +89,7 @@ export const verifyWebAuthn = async (req: Request, res: Response) => {
       sumSquares += diff * diff;
     }
     const euclideanDistance = Math.sqrt(sumSquares);
-    const MAX_MATCH_THRESHOLD = 0.48; // Strict threshold for high-security biometric authentication
+    const MAX_MATCH_THRESHOLD = 0.54; // Robust calibrated threshold for facial recognition under varying lighting
 
     console.log(`[Server Face Auth] Voter: ${voter.voter_id}, Distance: ${euclideanDistance.toFixed(4)}, Threshold: ${MAX_MATCH_THRESHOLD}`);
 
