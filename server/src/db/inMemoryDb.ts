@@ -45,7 +45,6 @@ export class InMemoryDb {
         voter_id STRING,
         full_name STRING,
         email STRING,
-        google_sub STRING,
         face_descriptor STRING,
         face_photo STRING,
         created_at DATETIME
@@ -131,124 +130,27 @@ export class InMemoryDb {
       [2, 1, 'CAN-02', 'Marcus Vance', 'Civic Liberty Union', 'Advocating for economic modernization, personal privacy, and civic infrastructure.']
     );
 
-    // Seed default voters with verified Google identities
+    // Seed default voters
     alasql(
       'INSERT INTO voters (id, voter_id, full_name, email, created_at) VALUES (?, ?, ?, ?, NOW())',
-      [1, 'VTR-001', 'Alex Rivera', 'alex.rivera@gmail.com']
+      [1, 'VTR-001', 'Alex Rivera', 'alex.rivera@votex.io']
     );
     alasql(
       'INSERT INTO voters (id, voter_id, full_name, email, created_at) VALUES (?, ?, ?, ?, NOW())',
-      [2, 'VTR-002', 'Priya Sharma', 'priya.sharma@gmail.com']
+      [2, 'VTR-002', 'Priya Sharma', 'priya.sharma@votex.io']
     );
     alasql(
       'INSERT INTO voters (id, voter_id, full_name, email, created_at) VALUES (?, ?, ?, ?, NOW())',
-      [3, 'VTR-003', 'Gnaneshwar', 'gnaneshwar.votex@gmail.com']
-    );
-    alasql(
-      'INSERT INTO voters (id, voter_id, full_name, email, created_at) VALUES (?, ?, ?, ?, NOW())',
-      [4, 'VTR-004', 'Gnaneshwar Alt', 'gnaneshwar@votex.io']
+      [3, 'VTR-003', 'Gnaneshwar', 'gnaneshwar@votex.io']
     );
 
-    // Register voters in the room:
-    // VTR-001: Registered, Eligible (not voted)
-    // VTR-002: Registered, Already Voted (has_voted = 1, for duplicate vote testing)
-    // VTR-003: Registered, Eligible (not voted)
+    // Register voters in the room
     alasql('INSERT INTO room_voters (id, election_id, voter_id, has_voted, created_at) VALUES (1, 1, 1, 0, NOW())');
-    alasql('INSERT INTO room_voters (id, election_id, voter_id, has_voted, voted_at, created_at) VALUES (2, 1, 2, 1, NOW(), NOW())');
+    alasql('INSERT INTO room_voters (id, election_id, voter_id, has_voted, created_at) VALUES (2, 1, 2, 0, NOW())');
     alasql('INSERT INTO room_voters (id, election_id, voter_id, has_voted, created_at) VALUES (3, 1, 3, 0, NOW())');
-    alasql('INSERT INTO room_voters (id, election_id, voter_id, has_voted, created_at) VALUES (4, 1, 4, 0, NOW())');
-
-    // Create users table for unified login (Gmail, Phone/Email) with role memory
-    alasql(`
-      CREATE TABLE IF NOT EXISTS users (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        identifier STRING,
-        auth_provider STRING,
-        role STRING,
-        name STRING,
-        avatar_url STRING,
-        linked_admin_id INT,
-        linked_voter_id INT,
-        last_room_number STRING,
-        created_at DATETIME,
-        updated_at DATETIME
-      );
-    `);
-
-    // Seed default users with remembered roles for instant repeat login
-    alasql('INSERT INTO users (id, identifier, auth_provider, role, name, linked_admin_id, created_at) VALUES (1, "admin@votex.io", "email", "admin", "System Administrator", 1, NOW())');
-    alasql('INSERT INTO users (id, identifier, auth_provider, role, name, linked_admin_id, created_at) VALUES (2, "admin.official@gmail.com", "google", "admin", "Admin Official (Gmail)", 1, NOW())');
-    alasql('INSERT INTO users (id, identifier, auth_provider, role, name, linked_voter_id, last_room_number, created_at) VALUES (3, "gnaneshwar.votex@gmail.com", "google", "voter", "Gnaneshwar (Gmail)", 3, "VOTEX-2026", NOW())');
-    alasql('INSERT INTO users (id, identifier, auth_provider, role, name, linked_voter_id, last_room_number, created_at) VALUES (4, "voter@votex.io", "email", "voter", "Alex Rivera (Voter)", 1, "VOTEX-2026", NOW())');
-
-    // Seed 205 simultaneous active elections with candidates and voter registrations
-    this.seed200Elections(205);
 
     this.initialized = true;
-    console.log(`✅ In-memory database initialized and pre-seeded with 205 simultaneous active elections, candidates, and remembered Gmail/Phone user accounts.`);
-  }
-
-  public seed200Elections(targetCount: number = 205) {
-    const currentCountRows: any = alasql('SELECT COUNT(*) as cnt FROM election_rooms');
-    const currentCount = (currentCountRows && currentCountRows[0] && currentCountRows[0].cnt) || 0;
-    if (currentCount >= targetCount) {
-      return { count: currentCount, message: `Already initialized with ${currentCount} elections` };
-    }
-
-    const now = new Date();
-    const startTime = new Date(now.getTime() - 3600000).toISOString();
-    const endTime = new Date(now.getTime() + 7 * 86400000).toISOString();
-
-    const categories = [
-      'National Assembly District',
-      'Metropolitan Council Ward',
-      'State Senate District',
-      'University Faculty Council',
-      'Judicial Oversight District',
-      'Cooperative Board of Directors',
-      'Regional Health Board',
-      'Civic Infrastructure Committee'
-    ];
-
-    const candidatePool = [
-      { name: 'Dr. Elena Rostova', party: 'Open Governance Alliance', bio: 'Championing digital rights, smart election integrity, and civic accountability.' },
-      { name: 'Marcus Vance Jr.', party: 'Civic Liberty Union', bio: 'Advancing sustainable municipal development, privacy, and infrastructure.' },
-      { name: 'Dr. Tariq Al-Mansoor', party: 'Progressive Tech Alliance', bio: 'Pioneering clean energy, university reform, and decentralized voting.' },
-      { name: 'Sophia Chen', party: 'Public Trust Coalition', bio: 'Focusing on transparent budget allocation, healthcare access, and student representation.' }
-    ];
-
-    let candIdCounter = 1000;
-    for (let i = currentCount + 1; i <= targetCount; i++) {
-      const cat = categories[(i - 1) % categories.length];
-      const roomCode = `VOTEX-E${String(i).padStart(3, '0')}`;
-      const title = `${cat} #${String(i).padStart(3, '0')}`;
-
-      alasql(
-        'INSERT INTO election_rooms (id, admin_id, title, room_number, start_time, end_time, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
-        [i, 1, title, roomCode, startTime, endTime, 'active']
-      );
-
-      // Register 2 candidates
-      const candA = candidatePool[(i * 2) % candidatePool.length];
-      const candB = candidatePool[(i * 2 + 1) % candidatePool.length];
-      candIdCounter++;
-      alasql(
-        'INSERT INTO candidates (id, election_id, candidate_code, name, party, bio, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
-        [candIdCounter, i, 'CAN-01', candA.name, candA.party, candA.bio]
-      );
-      candIdCounter++;
-      alasql(
-        'INSERT INTO candidates (id, election_id, candidate_code, name, party, bio, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
-        [candIdCounter, i, 'CAN-02', candB.name, candB.party, candB.bio]
-      );
-
-      // Pre-link voters (1, 2, 3) to each election room
-      alasql(`INSERT INTO room_voters (election_id, voter_id, has_voted, created_at) VALUES (${i}, 1, 0, NOW())`);
-      alasql(`INSERT INTO room_voters (election_id, voter_id, has_voted, created_at) VALUES (${i}, 2, 0, NOW())`);
-      alasql(`INSERT INTO room_voters (election_id, voter_id, has_voted, created_at) VALUES (${i}, 3, 0, NOW())`);
-    }
-
-    return { count: targetCount, message: `Successfully initialized ${targetCount} simultaneous active elections.` };
+    console.log('âœ“ In-memory database initialized and seeded with admin, election (VOTEX-2026), candidates, and voters (VTR-001, VTR-002, VTR-003)');
   }
 
   public async query(sql: string, params: any[] = []): Promise<[any, any]> {

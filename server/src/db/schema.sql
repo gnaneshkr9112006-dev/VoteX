@@ -37,12 +37,10 @@ CREATE TABLE IF NOT EXISTS voters (
   voter_id VARCHAR(100) UNIQUE NOT NULL,
   full_name VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL,
-  google_sub VARCHAR(255),
   face_descriptor TEXT,
   face_photo LONGTEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_voter_email (email),
-  INDEX idx_voter_google_sub (google_sub)
+  INDEX idx_voter_email (email)
 );
 
 CREATE TABLE IF NOT EXISTS room_voters (
@@ -94,22 +92,4 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (admin_id) REFERENCES administrators(id) ON DELETE SET NULL,
   FOREIGN KEY (election_id) REFERENCES election_rooms(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS users (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  identifier VARCHAR(255) UNIQUE NOT NULL,
-  auth_provider VARCHAR(50) DEFAULT 'email',
-  role VARCHAR(50),
-  name VARCHAR(255),
-  avatar_url VARCHAR(500),
-  linked_admin_id INT,
-  linked_voter_id INT,
-  last_room_number VARCHAR(50),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_user_identifier (identifier),
-  INDEX idx_user_role (role),
-  FOREIGN KEY (linked_admin_id) REFERENCES administrators(id) ON DELETE SET NULL,
-  FOREIGN KEY (linked_voter_id) REFERENCES voters(id) ON DELETE SET NULL
 );

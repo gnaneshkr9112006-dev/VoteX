@@ -48,9 +48,5 @@ export const config = {
     loginId: process.env.ADMIN_LOGIN_ID || 'admin',
     password: process.env.ADMIN_PASSWORD || 'admin123',
     role: process.env.ADMIN_ROLE || 'super_admin'
-  },
-  google: {
-    clientId: process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || '',
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET || ''
   }
 };

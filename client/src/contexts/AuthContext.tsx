@@ -5,11 +5,6 @@ interface AuthContextType {
   user: any;
   loading: boolean;
   login: (type: 'admin'|'voter', data: any) => Promise<void>;
-  googleLogin: (idToken: string, roomNumber?: string, role?: 'admin' | 'voter') => Promise<any>;
-  unifiedLogin: (data: { identifier: string; authProvider?: string; name?: string; avatar?: string }) => Promise<any>;
-  unifiedSelectRole: (data: { identifier: string; role: 'admin' | 'voter'; name?: string; roomNumber?: string }) => Promise<any>;
-  unifiedResetRole: (identifier: string) => Promise<any>;
-  setUserData: (u: any) => void;
   logout: () => Promise<void>;
 }
 
@@ -46,53 +41,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUser(userData);
   };
 
-  const googleLogin = async (idToken: string, roomNumber?: string, role?: 'admin' | 'voter') => {
-    const res = await authApi.googleLogin({ idToken, roomNumber, role });
-    if (res.user) {
-      const userData = { ...res.user };
-      if (userData.role === 'voter' && userData.roomNumber) {
-        localStorage.setItem('votex_voter_room', userData.roomNumber);
-      }
-      setUser(userData);
-    }
-    return res;
-  };
-
-  const unifiedLogin = async (data: { identifier: string; authProvider?: string; name?: string; avatar?: string }) => {
-    const res = await authApi.unifiedLogin(data);
-    if (!res.needsRoleSelection && res.user) {
-      const userData = { ...res.user };
-      if (userData.role === 'voter' && userData.roomNumber) {
-        localStorage.setItem('votex_voter_room', userData.roomNumber);
-      }
-      setUser(userData);
-    }
-    return res;
-  };
-
-  const unifiedSelectRole = async (data: { identifier: string; role: 'admin' | 'voter'; name?: string; roomNumber?: string }) => {
-    const res = await authApi.unifiedSelectRole(data);
-    if (res.user) {
-      const userData = { ...res.user };
-      if (userData.role === 'voter' && userData.roomNumber) {
-        localStorage.setItem('votex_voter_room', userData.roomNumber);
-      }
-      setUser(userData);
-    }
-    return res;
-  };
-
-  const unifiedResetRole = async (identifier: string) => {
-    const res = await authApi.unifiedResetRole({ identifier });
-    setUser(null);
-    localStorage.removeItem('votex_voter_room');
-    return res;
-  };
-
-  const setUserData = (u: any) => {
-    setUser(u);
-  };
-
   const logout = async () => {
     await authApi.logout();
     localStorage.removeItem('votex_voter_room');
@@ -100,17 +48,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      loading,
-      login,
-      googleLogin,
-      unifiedLogin,
-      unifiedSelectRole,
-      unifiedResetRole,
-      setUserData,
-      logout
-    }}>
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

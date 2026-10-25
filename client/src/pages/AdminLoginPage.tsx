@@ -2,15 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
-import { GoogleSignInButton } from '../components/GoogleSignInButton';
 import './AuthPages.css';
 
 const AdminLoginPage = () => {
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const { login, googleLogin } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -20,23 +18,6 @@ const AdminLoginPage = () => {
       navigate('/admin');
     } catch (err: any) {
       setError(err.message || 'Login failed');
-    }
-  };
-
-  const handleGoogleSuccess = async (idToken: string) => {
-    try {
-      setGoogleLoading(true);
-      setError('');
-      const res = await googleLogin(idToken, undefined, 'admin');
-      if (res.redirectTo) {
-        navigate(res.redirectTo);
-      } else {
-        navigate('/admin');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Google authentication failed');
-    } finally {
-      setGoogleLoading(false);
     }
   };
 
@@ -77,18 +58,6 @@ const AdminLoginPage = () => {
           </div>
           <button type="submit" className="btn btn-primary full-width mt-4">Login to Dashboard</button>
         </form>
-
-        <div style={{ display: 'flex', alignItems: 'center', margin: '1.25rem 0', color: '#64748b', fontSize: '0.82rem' }}>
-          <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }} />
-          <span style={{ padding: '0 0.75rem' }}>or sign in with Google</span>
-          <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }} />
-        </div>
-
-        <GoogleSignInButton
-          onSuccess={handleGoogleSuccess}
-          onError={(err) => setError(err)}
-          loading={googleLoading}
-        />
       </div>
     </div>
   );
