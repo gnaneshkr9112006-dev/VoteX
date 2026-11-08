@@ -7,7 +7,7 @@ export interface AuthRequest extends Request {
 }
 
 export const verifyToken = (req: AuthRequest, res: Response, next: NextFunction) => {
-  const token = req.cookies.votex_token;
+  const token = req.cookies?.votex_token || req.headers?.authorization?.replace(/^Bearer\s+/i, '');
   if (!token) return res.status(401).json({ message: 'Unauthorized' });
 
   try {

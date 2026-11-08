@@ -1,28 +1,32 @@
 import { Request, Response } from 'express';
 import { pool } from '../db/connection';
+import { blockchainService } from '../services/blockchainService';
 
 export const addCandidate = async (req: Request, res: Response) => {
   const adminId = (req as any).user.id;
   const role = (req as any).user.role;
-  const electionId = req.params.id;
+  const identifier = req.params.id;
   let { candidateCode, name, party, bio } = req.body;
 
-  if (!name || !name.trim()) {
-    return res.status(400).json({ message: 'Candidate name is required' });
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    return res.status(400).json({ message: 'Candidate name is required and must be text' });
   }
 
   try {
     const isSuperAdmin = role === 'super_admin';
     const query = isSuperAdmin
-      ? 'SELECT id, status, title FROM election_rooms WHERE id = ?'
-      : 'SELECT id, status, title FROM election_rooms WHERE id = ? AND admin_id = ?';
-    const params = isSuperAdmin ? [electionId] : [electionId, adminId];
+      ? 'SELECT id, status, title FROM election_rooms WHERE id = ? OR UPPER(TRIM(room_number)) = UPPER(?)'
+      : 'SELECT id, status, title FROM election_rooms WHERE (id = ? OR UPPER(TRIM(room_number)) = UPPER(?)) AND admin_id = ?';
+    const params = isSuperAdmin ? [identifier, identifier] : [identifier, identifier, adminId];
     const [elections]: any = await pool.query(query, params);
     if (elections.length === 0) {
       return res.status(404).json({ message: 'Election not found or access denied' });
     }
 
-    if (elections[0].status === 'closed' || elections[0].status === 'published') {
+    const election = elections[0];
+    const electionId = election.id;
+
+    if (election.status === 'closed' || election.status === 'published') {
       return res.status(400).json({ message: 'Cannot add candidates to a closed or published election' });
     }
 
@@ -52,10 +56,17 @@ export const addCandidate = async (req: Request, res: Response) => {
       [electionId, candidateCode, name.trim(), party?.trim() || null, bio?.trim() || null]
     );
 
+    // Register on blockchain if connected
+    try {
+      await blockchainService.addCandidate(Number(electionId), candidateCode);
+    } catch {
+      // ignore
+    }
+
     // Audit log
     await pool.query(
       'INSERT INTO audit_logs (admin_id, election_id, action, details, ip_address) VALUES (?, ?, ?, ?, ?)',
-      [adminId, electionId, 'CANDIDATE_ADDED', `Candidate "${name}" (${candidateCode}) added to "${elections[0].title}"`, req.ip]
+      [adminId, electionId, 'CANDIDATE_ADDED', `Candidate "${name}" (${candidateCode}) added to "${election.title}"`, req.ip]
     );
 
     res.status(201).json({
@@ -81,19 +92,21 @@ export const addCandidate = async (req: Request, res: Response) => {
 export const editCandidate = async (req: Request, res: Response) => {
   const adminId = (req as any).user.id;
   const role = (req as any).user.role;
-  const { id: electionId, candidateId } = req.params;
+  const { id: identifier, candidateId } = req.params;
   const { name, party, bio } = req.body;
 
   try {
     const isSuperAdmin = role === 'super_admin';
     const query = isSuperAdmin
-      ? 'SELECT id FROM election_rooms WHERE id = ?'
-      : 'SELECT id FROM election_rooms WHERE id = ? AND admin_id = ?';
-    const params = isSuperAdmin ? [electionId] : [electionId, adminId];
+      ? 'SELECT id FROM election_rooms WHERE id = ? OR UPPER(TRIM(room_number)) = UPPER(?)'
+      : 'SELECT id FROM election_rooms WHERE (id = ? OR UPPER(TRIM(room_number)) = UPPER(?)) AND admin_id = ?';
+    const params = isSuperAdmin ? [identifier, identifier] : [identifier, identifier, adminId];
     const [elections]: any = await pool.query(query, params);
     if (elections.length === 0) {
       return res.status(404).json({ message: 'Election not found or access denied' });
     }
+
+    const electionId = elections[0].id;
 
     await pool.query(
       'UPDATE candidates SET name = ?, party = ?, bio = ? WHERE id = ? AND election_id = ?',
@@ -115,18 +128,21 @@ export const editCandidate = async (req: Request, res: Response) => {
 export const removeCandidate = async (req: Request, res: Response) => {
   const adminId = (req as any).user.id;
   const role = (req as any).user.role;
-  const { id: electionId, candidateId } = req.params;
+  const { id: identifier, candidateId } = req.params;
 
   try {
     const isSuperAdmin = role === 'super_admin';
     const query = isSuperAdmin
-      ? 'SELECT id, status FROM election_rooms WHERE id = ?'
-      : 'SELECT id, status FROM election_rooms WHERE id = ? AND admin_id = ?';
-    const params = isSuperAdmin ? [electionId] : [electionId, adminId];
+      ? 'SELECT id, status FROM election_rooms WHERE id = ? OR UPPER(TRIM(room_number)) = UPPER(?)'
+      : 'SELECT id, status FROM election_rooms WHERE (id = ? OR UPPER(TRIM(room_number)) = UPPER(?)) AND admin_id = ?';
+    const params = isSuperAdmin ? [identifier, identifier] : [identifier, identifier, adminId];
     const [elections]: any = await pool.query(query, params);
     if (elections.length === 0) {
       return res.status(404).json({ message: 'Election not found or access denied' });
     }
+
+    const electionId = elections[0].id;
+
     if (elections[0].status === 'closed' || elections[0].status === 'published') {
       return res.status(400).json({ message: 'Cannot remove candidates from a closed or published election' });
     }
@@ -168,11 +184,12 @@ export const listCandidates = async (req: Request, res: Response) => {
   const identifier = req.params.id;
   try {
     let electionId = identifier;
-    if (isNaN(Number(identifier))) {
-      const [rooms]: any = await pool.query('SELECT id FROM election_rooms WHERE room_number = ?', [identifier]);
-      if (rooms && rooms.length > 0) {
-        electionId = rooms[0].id;
-      }
+    const [rooms]: any = await pool.query(
+      'SELECT id FROM election_rooms WHERE id = ? OR UPPER(TRIM(room_number)) = UPPER(?)',
+      [identifier, identifier]
+    );
+    if (rooms && rooms.length > 0) {
+      electionId = rooms[0].id;
     }
     const [rows] = await pool.query(
       'SELECT * FROM candidates WHERE election_id = ? ORDER BY name ASC',

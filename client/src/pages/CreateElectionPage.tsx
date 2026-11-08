@@ -23,6 +23,7 @@ const CreateElectionPage = () => {
       });
       const electionId = res?.electionId || (res?.election && res.election.id);
       if (electionId) {
+        localStorage.setItem('votex_active_election', String(electionId));
         navigate(`/admin/candidates?electionId=${electionId}&new=true`);
       } else {
         navigate('/admin/candidates');

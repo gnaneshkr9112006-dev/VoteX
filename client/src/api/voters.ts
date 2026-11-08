@@ -1,20 +1,17 @@
-import { apiGet, apiPost, apiDelete, apiFetch } from './client';
+import { apiGet, apiPost, apiPut, apiDelete, apiUpload } from './client';
 
 export const votersApi = {
   registerVoter: (electionId: string, data: any) => apiPost(`/elections/${electionId}/voters`, data),
   getVoters: (electionId: string) => apiGet(`/elections/${electionId}/voters`),
+  updateVoter: (electionId: string, voterId: string, data: any) =>
+    apiPut(`/elections/${electionId}/voters/${voterId}`, data),
   deleteVoter: (electionId: string, voterId: string) => apiDelete(`/elections/${electionId}/voters/${voterId}`),
+  clearAllVoters: (electionId: string) => apiDelete(`/elections/${electionId}/voters`),
   enrollVoterFace: (electionId: string, voterId: string, data: { faceDescriptor: number[]; photoBase64?: string }) =>
     apiPost(`/elections/${electionId}/voters/${voterId}/face`, data),
-  importVotersCSV: async (electionId: string, file: File) => {
+  importVotersCSV: (electionId: string, file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await fetch(`/api/elections/${electionId}/voters/import`, {
-      method: 'POST',
-      body: formData,
-      credentials: 'include'
-    });
-    if (!response.ok) throw new Error('Upload failed');
-    return response.json();
+    return apiUpload(`/elections/${electionId}/voters/import`, formData);
   }
 };

@@ -17,7 +17,14 @@ const RoomSettingsPage = () => {
     const res = await electionsApi.getElections();
     const data = Array.isArray(res) ? res : (res.elections || []);
     setElections(data);
-    if (data.length > 0 && !selectedElection) setSelectedElection(data[0].id);
+    if (data.length > 0 && !selectedElection) {
+      const saved = localStorage.getItem('votex_active_election');
+      if (saved && data.some((el: any) => String(el.id) === saved)) {
+        setSelectedElection(saved);
+      } else {
+        setSelectedElection(String(data[0].id));
+      }
+    }
   };
 
   useEffect(() => { fetchElections(); }, []);
@@ -62,7 +69,7 @@ const RoomSettingsPage = () => {
             value={electionFilter}
             onChange={e => setElectionFilter(e.target.value)}
           />
-          <select className="form-input" value={selectedElection} onChange={e => setSelectedElection(e.target.value)}>
+          <select className="form-input" value={selectedElection} onChange={e => { setSelectedElection(e.target.value); localStorage.setItem('votex_active_election', e.target.value); }}>
             {elections
               .filter(el =>
                 electionFilter === '' ||

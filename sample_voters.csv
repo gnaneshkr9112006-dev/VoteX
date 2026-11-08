@@ -1,11 +1,11 @@
-voter_id,full_name,email
-VOTER-101,Alice Johnson,alice.johnson@example.com
-VOTER-102,Bob Smith,bob.smith@example.com
-VOTER-103,Charlie Davis,charlie.davis@example.com
-VOTER-104,Diana Martinez,diana.martinez@example.com
-VOTER-105,Ethan Wilson,ethan.wilson@example.com
-VOTER-106,Fiona Brown,fiona.brown@example.com
-VOTER-107,George Taylor,george.taylor@example.com
-VOTER-108,Hannah Lee,hannah.lee@example.com
-VOTER-109,Ivan Patel,ivan.patel@example.com
-VOTER-110,Julia Chen,julia.chen@example.com
+voter_id,full_name,phone_number,email
+V001,Gnanesh K R,9535120668,gnaneshkr911206@gmail.com
+V002,Alice Johnson,+1-555-0101,alice.johnson@example.com
+V003,Bob Smith,+1-555-0102,bob.smith@example.com
+V004,Charlie Davis,+1-555-0103,charlie.davis@example.com
+V005,Diana Martinez,+1-555-0104,diana.martinez@example.com
+V006,Ethan Wilson,+1-555-0105,ethan.wilson@example.com
+V007,Fiona Brown,+1-555-0106,fiona.brown@example.com
+V008,George Taylor,+1-555-0107,george.taylor@example.com
+V009,Hannah Lee,+1-555-0108,hannah.lee@example.com
+V010,Ivan Patel,+1-555-0109,ivan.patel@example.com

@@ -45,6 +45,7 @@ export class InMemoryDb {
         voter_id STRING,
         full_name STRING,
         email STRING,
+        phone_number STRING,
         face_descriptor STRING,
         face_photo STRING,
         created_at DATETIME
@@ -55,7 +56,7 @@ export class InMemoryDb {
         election_id INT,
         voter_id INT,
         verification_proof_hash STRING,
-        has_voted INT,
+        has_voted INT DEFAULT 0,
         voted_at DATETIME,
         webauthn_credential_id STRING,
         created_at DATETIME
@@ -132,25 +133,28 @@ export class InMemoryDb {
 
     // Seed default voters
     alasql(
-      'INSERT INTO voters (id, voter_id, full_name, email, created_at) VALUES (?, ?, ?, ?, NOW())',
-      [1, 'VTR-001', 'Alex Rivera', 'alex.rivera@votex.io']
+      'INSERT INTO voters (id, voter_id, full_name, email, phone_number, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+      [1, 'VTR-001', 'Alex Rivera', 'alex.rivera@votex.io', '+1 555-0101']
     );
     alasql(
-      'INSERT INTO voters (id, voter_id, full_name, email, created_at) VALUES (?, ?, ?, ?, NOW())',
-      [2, 'VTR-002', 'Priya Sharma', 'priya.sharma@votex.io']
+      'INSERT INTO voters (id, voter_id, full_name, email, phone_number, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+      [2, 'VTR-002', 'Priya Sharma', 'priya.sharma@votex.io', '+1 555-0102']
     );
     alasql(
-      'INSERT INTO voters (id, voter_id, full_name, email, created_at) VALUES (?, ?, ?, ?, NOW())',
-      [3, 'VTR-003', 'Gnaneshwar', 'gnaneshwar@votex.io']
+      'INSERT INTO voters (id, voter_id, full_name, email, phone_number, face_descriptor, face_photo, created_at) VALUES (?, ?, ?, ?, ?, NULL, NULL, NOW())',
+      [3, 'VTR-003', 'Gnaneshwar', 'gnaneshwar@votex.io', '+1 555-0199']
+    );
+    alasql(
+      'INSERT INTO voters (id, voter_id, full_name, email, phone_number, face_descriptor, face_photo, created_at) VALUES (?, ?, ?, ?, ?, NULL, NULL, NOW())',
+      [4, 'V001', 'Gnanesh K R', 'gnanesh@votex.io', '9535120668']
     );
 
-    // Register voters in the room
-    alasql('INSERT INTO room_voters (id, election_id, voter_id, has_voted, created_at) VALUES (1, 1, 1, 0, NOW())');
-    alasql('INSERT INTO room_voters (id, election_id, voter_id, has_voted, created_at) VALUES (2, 1, 2, 0, NOW())');
-    alasql('INSERT INTO room_voters (id, election_id, voter_id, has_voted, created_at) VALUES (3, 1, 3, 0, NOW())');
+    // Link default voters to room 1 (VOTEX-2026) for instant testing
+    alasql('INSERT INTO room_voters (election_id, voter_id, has_voted, created_at) VALUES (?, ?, 0, NOW())', [1, 3]);
+    alasql('INSERT INTO room_voters (election_id, voter_id, has_voted, created_at) VALUES (?, ?, 0, NOW())', [1, 4]);
 
     this.initialized = true;
-    console.log('âœ“ In-memory database initialized and seeded with admin, election (VOTEX-2026), candidates, and voters (VTR-001, VTR-002, VTR-003)');
+    console.log('[VoteX] In-memory database initialized and seeded with admin, election (VOTEX-2026), candidates, and voters (V001 / VTR-003)');
   }
 
   public async query(sql: string, params: any[] = []): Promise<[any, any]> {
@@ -160,9 +164,7 @@ export class InMemoryDb {
     cleanSql = cleanSql.replace(/\s+FOR\s+UPDATE/gi, '');
 
     // Ensure integer ID columns handle string parameter coercion in alaSQL
-    if (!cleanSql.toUpperCase().startsWith('UPDATE')) {
-      cleanSql = cleanSql.replace(/\b([a-zA-Z0-9_]+\.)?(id|admin_id|election_id)\s*=\s*\?/gi, '$1$2 = CAST(? AS INT)');
-    }
+    cleanSql = cleanSql.replace(/\b(([a-zA-Z0-9_]+\.)?(admin_id|election_id)|([a-zA-Z0-9_]+\.)?id)\s*=\s*\?/gi, (m, col) => col + ' = CAST(? AS INT)');
 
     // Escape alaSQL aggregate keyword 'total'
     cleanSql = cleanSql.replace(/\bas\s+total\b/gi, 'as [total]');

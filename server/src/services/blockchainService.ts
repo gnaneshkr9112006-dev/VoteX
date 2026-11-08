@@ -6,6 +6,7 @@ import crypto from 'crypto';
 
 const CONTRACT_ABI = [
   "function createElection(bytes32 electionId, string[] memory candidateIds) external",
+  "function addCandidate(bytes32 electionId, string memory candidateId) external",
   "function castVote(bytes32 electionId, string memory candidateId, bytes32 voterCommitment, bytes32 proofHash, string memory receiptId) external",
   "function hasVoted(bytes32 electionId, bytes32 voterCommitment) external view returns (bool)",
   "function getResults(bytes32 electionId, string memory candidateId) external view returns (uint256)",
@@ -116,6 +117,24 @@ class BlockchainService {
     }
   }
 
+  async addCandidate(electionId: number, candidateId: string): Promise<{ txHash: string; blockNumber: number } | null> {
+    const numElectionId = Number(electionId);
+    const onchainId = this.electionIdToBytes32(numElectionId);
+
+    if (!this.isConnected || !this.contract) {
+      return null;
+    }
+
+    try {
+      const tx = await this.contract.addCandidate(onchainId, candidateId);
+      const receipt = await tx.wait();
+      return { txHash: receipt.hash, blockNumber: receipt.blockNumber };
+    } catch (error) {
+      console.warn('[Blockchain] addCandidate notice:', (error as any)?.shortMessage || (error as any)?.message);
+      return null;
+    }
+  }
+
   async castVote(
     electionId: number,
     candidateId: string,
@@ -125,8 +144,10 @@ class BlockchainService {
   ): Promise<{ txHash: string; blockNumber: number }> {
     const numElectionId = Number(electionId);
     const onchainId = this.electionIdToBytes32(numElectionId);
-    const commitmentBytes = ethers.zeroPadBytes(ethers.toBeHex(voterCommitment.startsWith('0x') ? voterCommitment : `0x${voterCommitment}`), 32);
-    const proofBytes = ethers.zeroPadBytes(ethers.toBeHex(proofHash.startsWith('0x') ? proofHash : `0x${proofHash}`), 32);
+    const hexCommitment = voterCommitment.startsWith('0x') ? voterCommitment : `0x${voterCommitment}`;
+    const hexProof = proofHash.startsWith('0x') ? proofHash : `0x${proofHash}`;
+    const commitmentBytes = ethers.zeroPadValue(hexCommitment, 32);
+    const proofBytes = ethers.zeroPadValue(hexProof, 32);
 
     if (!this.isConnected || !this.contract) {
       if (!this.simulatedVotes.has(numElectionId)) {
@@ -172,7 +193,8 @@ class BlockchainService {
 
     try {
       const onchainId = this.electionIdToBytes32(numElectionId);
-      const commitmentBytes = ethers.zeroPadBytes(ethers.toBeHex(voterCommitment.startsWith('0x') ? voterCommitment : `0x${voterCommitment}`), 32);
+      const hexCommitment = voterCommitment.startsWith('0x') ? voterCommitment : `0x${voterCommitment}`;
+      const commitmentBytes = ethers.zeroPadValue(hexCommitment, 32);
       return await this.contract.hasVoted(onchainId, commitmentBytes);
     } catch (error) {
       return false;

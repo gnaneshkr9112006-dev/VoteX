@@ -44,10 +44,68 @@ const LandingPage: React.FC = () => {
             </Link>
           </div>
         </div>
+
+        {/* Project Reports & Whitepapers Download Bar */}
+        <div style={{
+          marginTop: '2.5rem',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '1rem',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}>
+          <a
+            href="/VoteX_Project_Report.pdf"
+            download="VoteX_Project_Report.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn"
+            style={{
+              background: 'rgba(59, 130, 246, 0.15)',
+              border: '1px solid rgba(59, 130, 246, 0.35)',
+              color: '#93c5fd',
+              fontSize: '0.85rem',
+              padding: '0.55rem 1.1rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              borderRadius: '8px',
+              textDecoration: 'none',
+              transition: 'all 0.2s'
+            }}
+          >
+            <span>📥</span>
+            <span>Download Project Report (PDF)</span>
+          </a>
+
+          <a
+            href="/VoteX_Blockchain_Architecture.pdf"
+            download="VoteX_Blockchain_Architecture.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn"
+            style={{
+              background: 'rgba(168, 85, 247, 0.15)',
+              border: '1px solid rgba(168, 85, 247, 0.35)',
+              color: '#d8b4fe',
+              fontSize: '0.85rem',
+              padding: '0.55rem 1.1rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              borderRadius: '8px',
+              textDecoration: 'none',
+              transition: 'all 0.2s'
+            }}
+          >
+            <span>📜</span>
+            <span>Download Blockchain Concept (PDF)</span>
+          </a>
+        </div>
       </div>
 
       <footer className="landing-footer">
-        Powered by Blockchain Technology
+        Powered by Blockchain Technology • SHA-256 Ledger
       </footer>
     </div>
   );

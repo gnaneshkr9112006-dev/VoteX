@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { SocketProvider } from './contexts/SocketContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -50,6 +50,8 @@ function App() {
               <Route path="results" element={<PublishedResultsPage />} />
             </Route>
           </Route>
+
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </SocketProvider>
     </AuthProvider>

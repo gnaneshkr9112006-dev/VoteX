@@ -1,6 +1,5 @@
 import { Server } from 'socket.io';
 import http from 'http';
-import { config } from '../config';
 
 let io: Server;
 

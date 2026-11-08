@@ -46,6 +46,10 @@ const BallotPage = () => {
         if (res.roomNumber) setRoomDisplay(res.roomNumber);
 
         if (!res.hasVoted) {
+          if (!res.isVerified) {
+            navigate('/voter/verify');
+            return;
+          }
           const target = res.electionId || user?.electionId || activeRoom;
           loadCandidatesForElection(target);
         } else {

@@ -8,12 +8,15 @@ export const createElection = async (req: Request, res: Response) => {
   const adminId = (req as any).user.id;
   const { title, startTime, endTime } = req.body;
 
-  if (!title || !startTime || !endTime) {
-    return res.status(400).json({ message: 'Title, start time, and end time are required' });
+  if (!title || typeof title !== 'string' || !title.trim() || !startTime || !endTime) {
+    return res.status(400).json({ message: 'Valid title, start time, and end time are required' });
   }
 
   const start = new Date(startTime);
   const end = new Date(endTime);
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    return res.status(400).json({ message: 'Start time and end time must be valid ISO date strings' });
+  }
   if (end <= start) {
     return res.status(400).json({ message: 'End time must be after start time' });
   }
@@ -25,7 +28,7 @@ export const createElection = async (req: Request, res: Response) => {
     await connection.beginTransaction();
 
     const [result]: any = await connection.query(
-      'INSERT INTO election_rooms (room_number, admin_id, title, start_time, end_time) VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO election_rooms (room_number, admin_id, title, start_time, end_time, status, created_at) VALUES (?, ?, ?, ?, ?, \'active\', NOW())',
       [roomNumber, adminId, title, startTime, endTime]
     );
     const electionId = result.insertId;
@@ -77,12 +80,12 @@ export const listElections = async (req: Request, res: Response) => {
                (SELECT COUNT(*) FROM room_voters WHERE election_id = er.id) as voter_count,
                (SELECT COUNT(*) FROM room_voters WHERE election_id = er.id AND has_voted = 1) as vote_count,
                (SELECT COUNT(*) FROM candidates WHERE election_id = er.id) as candidate_count
-        FROM election_rooms er ORDER BY er.created_at DESC`
+        FROM election_rooms er ORDER BY er.id DESC`
       : `SELECT er.*,
                (SELECT COUNT(*) FROM room_voters WHERE election_id = er.id) as voter_count,
                (SELECT COUNT(*) FROM room_voters WHERE election_id = er.id AND has_voted = 1) as vote_count,
                (SELECT COUNT(*) FROM candidates WHERE election_id = er.id) as candidate_count
-        FROM election_rooms er WHERE er.admin_id = ? ORDER BY er.created_at DESC`;
+        FROM election_rooms er WHERE er.admin_id = ? ORDER BY er.id DESC`;
     const params = isSuperAdmin ? [] : [adminId];
     const [rows] = await pool.query(query, params);
     res.json(rows);
@@ -131,16 +134,36 @@ export const updateElection = async (req: Request, res: Response) => {
     const params = isSuperAdmin ? [electionId] : [electionId, adminId];
     const [existing]: any = await pool.query(query, params);
     if (existing.length === 0) return res.status(404).json({ message: 'Election not found or access denied' });
-    if (existing[0].status !== 'draft') {
-      return res.status(400).json({ message: 'Cannot modify an active or closed election' });
+    if (existing[0].status === 'closed' || existing[0].status === 'published') {
+      return res.status(400).json({ message: 'Cannot modify a closed or published election' });
+    }
+
+    const [voteCheck]: any = await pool.query(
+      'SELECT COUNT(*) as vote_count FROM room_voters WHERE election_id = ? AND has_voted = 1',
+      [electionId]
+    );
+    if ((voteCheck[0]?.vote_count || 0) > 0) {
+      return res.status(400).json({ message: 'Cannot modify an election after voting has begun' });
+    }
+
+    if (title !== undefined && (typeof title !== 'string' || !title.trim())) {
+      return res.status(400).json({ message: 'Election title cannot be empty' });
+    }
+
+    if (startTime && endTime) {
+      const start = new Date(startTime);
+      const end = new Date(endTime);
+      if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) {
+        return res.status(400).json({ message: 'End time must be after start time and both must be valid dates' });
+      }
     }
 
     const updateQuery = isSuperAdmin
-      ? 'UPDATE election_rooms SET title = ?, start_time = ?, end_time = ? WHERE id = ?'
-      : 'UPDATE election_rooms SET title = ?, start_time = ?, end_time = ? WHERE id = ? AND admin_id = ?';
+      ? 'UPDATE election_rooms SET title = COALESCE(?, title), start_time = COALESCE(?, start_time), end_time = COALESCE(?, end_time) WHERE id = ?'
+      : 'UPDATE election_rooms SET title = COALESCE(?, title), start_time = COALESCE(?, start_time), end_time = COALESCE(?, end_time) WHERE id = ? AND admin_id = ?';
     const updateParams = isSuperAdmin
-      ? [title, startTime, endTime, electionId]
-      : [title, startTime, endTime, electionId, adminId];
+      ? [title?.trim() || null, startTime || null, endTime || null, electionId]
+      : [title?.trim() || null, startTime || null, endTime || null, electionId, adminId];
     await pool.query(updateQuery, updateParams);
 
     // Audit log

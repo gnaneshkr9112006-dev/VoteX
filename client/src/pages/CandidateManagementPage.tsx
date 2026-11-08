@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { electionsApi } from '../api/elections';
 import { candidatesApi } from '../api/candidates';
 import Modal from '../components/Modal';
@@ -8,6 +8,7 @@ import StatusBadge from '../components/StatusBadge';
 import { UserPlus, Trash2, CheckCircle, AlertCircle, Sparkles } from 'lucide-react';
 
 const CandidateManagementPage = () => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [elections, setElections] = useState<any[]>([]);
   const [selectedElection, setSelectedElection] = useState('');
@@ -29,10 +30,22 @@ const CandidateManagementPage = () => {
       const data = Array.isArray(res) ? res : (res.elections || []);
       setElections(data);
       if (data.length > 0) {
-        if (queryElectionId && data.some((el: any) => String(el.id) === queryElectionId)) {
-          setSelectedElection(queryElectionId);
+        const savedElection = localStorage.getItem('votex_active_election');
+        const matchedQuery = queryElectionId
+          ? data.find((el: any) => String(el.id) === queryElectionId || el.room_number?.toUpperCase() === queryElectionId?.toUpperCase())
+          : null;
+        const matchedSaved = savedElection
+          ? data.find((el: any) => String(el.id) === savedElection || el.room_number?.toUpperCase() === savedElection?.toUpperCase())
+          : null;
+
+        if (matchedQuery) {
+          setSelectedElection(String(matchedQuery.id));
+          localStorage.setItem('votex_active_election', String(matchedQuery.id));
+        } else if (matchedSaved) {
+          setSelectedElection(String(matchedSaved.id));
         } else {
           setSelectedElection(String(data[0].id));
+          localStorage.setItem('votex_active_election', String(data[0].id));
         }
       }
       setLoading(false);
@@ -147,6 +160,7 @@ const CandidateManagementPage = () => {
             value={selectedElection}
             onChange={e => {
               setSelectedElection(e.target.value);
+              localStorage.setItem('votex_active_election', e.target.value);
               setSearchParams({ electionId: e.target.value });
             }}
           >
@@ -166,6 +180,13 @@ const CandidateManagementPage = () => {
           <button className="btn btn-primary" onClick={() => openAddModal()} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <UserPlus size={18} />
             <span>Add Candidate</span>
+          </button>
+          <button
+            className="btn btn-secondary"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid var(--accent-cyan)', color: 'var(--accent-cyan)' }}
+            onClick={() => navigate(`/admin/voters?electionId=${selectedElection}`)}
+          >
+            <span>Proceed to Add Voters →</span>
           </button>
         </div>
       </div>

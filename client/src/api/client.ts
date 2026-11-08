@@ -23,21 +23,35 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
 
   const contentType = response.headers.get('content-type') || '';
 
-  if (!contentType.includes('application/json')) {
+  let data: any = null;
+  if (contentType.includes('application/json')) {
+    data = await response.json().catch(() => ({}));
+  } else {
+    const rawText = await response.text().catch(() => '');
+    if (response.status === 429) {
+      throw new Error('Rate limit reached: Too many requests. Please wait a few moments and try again.');
+    }
     if (!response.ok) {
+      if (rawText && rawText.length < 200 && !rawText.includes('<!DOCTYPE') && !rawText.includes('<html')) {
+        throw new Error(rawText.trim());
+      }
+      if (response.status === 500) {
+        throw new Error(
+          'Backend connection error (HTTP 500). Please verify the backend server is running on http://localhost:5000.'
+        );
+      }
       throw new Error(
-        `Backend API unreachable (HTTP ${response.status}). If deployed on Vercel, please connect your backend server URL via VITE_API_URL.`
+        `Server returned HTTP ${response.status}. Please check your connection.`
       );
     }
-    throw new Error(
-      'Invalid response format from server (received HTML instead of JSON). Backend API is not running at this domain.'
-    );
+    data = { message: rawText };
   }
 
-  const data = await response.json().catch(() => ({}));
-
   if (!response.ok) {
-    throw new Error(data.message || `API request failed with status ${response.status}`);
+    if (response.status === 429) {
+      throw new Error(data?.message || 'Rate limit reached: Too many requests. Please wait a few moments.');
+    }
+    throw new Error(data?.message || `API request failed with status ${response.status}`);
   }
 
   return data;
@@ -62,13 +76,19 @@ export async function apiUpload(endpoint: string, formData: FormData) {
   });
 
   const contentType = response.headers.get('content-type') || '';
-  if (!contentType.includes('application/json')) {
-    throw new Error('Upload failed: Backend API returned invalid response format.');
+  let data: any = null;
+  if (contentType.includes('application/json')) {
+    data = await response.json().catch(() => ({}));
+  } else {
+    const rawText = await response.text().catch(() => '');
+    if (!response.ok) {
+      throw new Error(rawText && rawText.length < 200 && !rawText.includes('<') ? rawText.trim() : `Upload failed with status ${response.status}`);
+    }
+    data = { message: rawText };
   }
 
-  const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.message || `Upload failed with status ${response.status}`);
+    throw new Error(data?.message || `Upload failed with status ${response.status}`);
   }
 
   return data;

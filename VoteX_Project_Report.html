@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>VoteX Project Report</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 16mm 16mm 16mm;
+    }
+    
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #1e293b;
+      line-height: 1.55;
+      font-size: 10pt;
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+    }
+
+    .cover-page {
+      padding: 30px 10px 10px 10px;
+      text-align: center;
+      min-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      page-break-after: always;
+    }
+
+    .cover-badge {
+      display: inline-block;
+      background: #e0f2fe;
+      border: 1px solid #38bdf8;
+      color: #0369a1;
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 8.5pt;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .cover-title {
+      font-size: 24pt;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.2;
+      margin: 0 0 14px 0;
+      letter-spacing: -0.02em;
+    }
+
+    .cover-subtitle {
+      font-size: 11.5pt;
+      color: #475569;
+      max-width: 650px;
+      margin: 0 auto 20px auto;
+      line-height: 1.45;
+    }
+
+    .cover-meta {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+      max-width: 500px;
+      margin: 30px auto;
+      text-align: left;
+    }
+
+    .cover-meta table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0;
+    }
+
+    .cover-meta td {
+      padding: 5px 8px;
+      border: none;
+      font-size: 9pt;
+    }
+
+    .cover-meta td.label {
+      font-weight: 700;
+      color: #0f172a;
+      width: 36%;
+    }
+
+    .cover-footer {
+      font-size: 8.5pt;
+      color: #64748b;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 12px;
+    }
+
+    h1 {
+      font-size: 15pt;
+      font-weight: 800;
+      color: #0f172a;
+      margin-top: 22px;
+      margin-bottom: 10px;
+      border-bottom: 2px solid #0284c7;
+      padding-bottom: 4px;
+      break-after: avoid;
+    }
+
+    h2 {
+      font-size: 12pt;
+      font-weight: 700;
+      color: #1e293b;
+      margin-top: 16px;
+      margin-bottom: 8px;
+      break-after: avoid;
+    }
+
+    h3 {
+      font-size: 10.5pt;
+      font-weight: 700;
+      color: #334155;
+      margin-top: 12px;
+      margin-bottom: 6px;
+      break-after: avoid;
+    }
+
+    p {
+      margin: 0 0 9px 0;
+      color: #334155;
+      text-align: justify;
+    }
+
+    ul, ol {
+      margin: 0 0 10px 0;
+      padding-left: 20px;
+      color: #334155;
+    }
+
+    li {
+      margin-bottom: 4px;
+    }
+
+    .card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 10px;
+      break-inside: avoid;
+    }
+
+    .highlight-box {
+      background: #eff6ff;
+      border-left: 4px solid #3b82f6;
+      border-radius: 4px;
+      padding: 10px 14px;
+      margin: 10px 0;
+      font-size: 9.5pt;
+      break-inside: avoid;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0 14px 0;
+      font-size: 9pt;
+      break-inside: avoid;
+    }
+
+    th {
+      background: #f1f5f9;
+      color: #0f172a;
+      font-weight: 700;
+      text-align: left;
+      padding: 7px 10px;
+      border: 1px solid #cbd5e1;
+    }
+
+    td {
+      padding: 6px 10px;
+      border: 1px solid #e2e8f0;
+      color: #334155;
+      vertical-align: top;
+    }
+
+    tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+
+    pre {
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-family: "Cascadia Code", Consolas, Monaco, monospace;
+      font-size: 8pt;
+      line-height: 1.4;
+      overflow-x: auto;
+      margin: 8px 0 10px 0;
+      break-inside: avoid;
+    }
+
+    code {
+      font-family: Consolas, Monaco, monospace;
+      font-size: 8.5pt;
+      background: #f1f5f9;
+      padding: 2px 4px;
+      border-radius: 4px;
+      color: #0284c7;
+    }
+
+    pre code {
+      background: none;
+      color: inherit;
+      padding: 0;
+    }
+
+    .math-formula {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 6px;
+      padding: 10px 16px;
+      font-family: "Cascadia Code", Consolas, monospace;
+      font-size: 10.5pt;
+      font-weight: 700;
+      color: #166534;
+      text-align: center;
+      margin: 10px 0;
+      break-inside: avoid;
+    }
+
+    
+  </style>
+</head>
+<body>
+
+  <!-- COVER PAGE -->
+  <div class="cover-page">
+    <div>
+      <div class="cover-badge">Academic & Technical Project Report</div>
+      <h1 class="cover-title">VoteX: Decentralized Biometric & Blockchain-Anchored Digital Voting Platform</h1>
+      <p class="cover-subtitle">A Full-Stack Cryptographic Election System with Cellular SMS Verification, 128D Neural Face Euclidean Verification, WebAuthn Fingerprint Hardware Authentication, and Multi-Tenant Solidity Smart Contracts</p>
+    </div>
+
+    <div class="cover-meta">
+      <table>
+        <tr>
+          <td class="label">Project Title:</td>
+          <td>VoteX (Verifiable On-Chain Trusted Election System)</td>
+        </tr>
+        <tr>
+          <td class="label">Primary Author:</td>
+          <td>Gnanesh K R</td>
+        </tr>
+        <tr>
+          <td class="label">Architecture:</td>
+          <td>React 18 &bull; Node.js Express &bull; Solidity ^0.8.20</td>
+        </tr>
+        <tr>
+          <td class="label">Blockchain Engine:</td>
+          <td>EVM / Hardhat / Ethereum Sepolia / Polygon</td>
+        </tr>
+        <tr>
+          <td class="label">Telephony Gateway:</td>
+          <td>Twilio Verify v2 Carrier REST API</td>
+        </tr>
+        <tr>
+          <td class="label">Biometric Model:</td>
+          <td>SSD MobileNet V1 + 128D Euclidean Metric</td>
+        </tr>
+        <tr>
+          <td class="label">Version / Status:</td>
+          <td>Release 1.0 (Production Verified)</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="cover-footer">
+      Department of Information Science & Engineering &bull; 2026 &bull; Confidential
+    </div>
+  </div>
+
+  <!-- ABSTRACT -->
+  <h1 style="break-before: page;">Abstract</h1>
+  <p>
+    Democratic and institutional elections remain vulnerable to centralized server manipulation, ballot tampering, voter impersonation, and coercion. Conventional Electronic Voting Machines (EVMs) lack universal cryptographic verifiability, while early web-based voting portals suffer from centralized database vulnerabilities where a single database administrator can alter vote tallies unnoticed.
+  </p>
+  <p>
+    This project presents <strong>VoteX</strong>, a production-ready, mobile-first, decentralized election platform that unites multi-factor carrier verification, dual-layer biometrics, and Ethereum smart contracts. Voter identity is certified through real-time cellular SMS one-time passcodes dispatched via the Twilio Verify API, paired with dual biometric authentication comprising real-time 128-dimensional facial embedding Euclidean distance comparison (&le; 0.54 calibrated threshold) and hardware WebAuthn fingerprint sensors.
+  </p>
+  <p>
+    To resolve the fundamental contradiction between double-voting prevention and voter anonymity, VoteX generates salted SHA-256 cryptographic voter commitments. The smart contract (<code>ElectionRegistry.sol</code>) records commitments on an immutable distributed ledger while tallying votes into candidate buckets without preserving any traceable link between the voter's identity and their choice. Furthermore, the architecture introduces multi-tenant room partitioning capable of executing 50+ concurrent elections simultaneously with isolated access controls and cryptographic receipts.
+  </p>
+
+  <div class="highlight-box">
+    <strong>Key Contributions:</strong>
+    (1) Carrier-grade Twilio Verify SMS integration with zero on-screen credential leakage.
+    (2) Server-side Euclidean mathematical verification of 128D facial vectors with liveness detection.
+    (3) Solidity smart contract ensuring zero double-voting and immutable consensus-based tallying.
+    (4) High-density multi-tenancy supporting 50+ independent simultaneous elections.
+    (5) Public cryptographic receipt verification providing mathematical proof of ballot inclusion.
+  </div>
+
+  <!-- CHAPTER 1 -->
+  <h1 style="break-before: page;">Chapter 1: Introduction & Problem Statement</h1>
+  
+  <h2>1.1 Background & Motivation</h2>
+  <p>
+    Voting is the bedrock of democratic governance, collegiate elections, and corporate decision-making. Despite technological modernization in banking, healthcare, and communications, election mechanisms remain largely antiquated or susceptible to systemic flaws:
+  </p>
+  <ul>
+    <li><strong>Paper Ballots:</strong> Physical paper voting requires massive logistical expenditures, physical booth guarding, and hours of manual counting, while remaining susceptible to ballot stuffing, physical theft, and invalid markings.</li>
+    <li><strong>Standalone EVMs:</strong> Electronic Voting Machines, while efficient in counting, operate as opaque black boxes lacking open mathematical transparency. Voters must blindly trust the machine firmware without receiving verifiable cryptographic receipts.</li>
+    <li><strong>Centralized Web Voting Portals:</strong> Early digital voting portals store votes in conventional relational databases (MySQL, PostgreSQL, MongoDB). In these systems, a single SQL query (<code>UPDATE votes SET candidate_id = 'X'</code>) can overturn an entire election without generating a cryptographic audit trail.</li>
+  </ul>
+
+  <h2>1.2 Problem Statement</h2>
+  <p>
+    How can an election system be designed to satisfy three mutually conflicting axioms simultaneously:
+  </p>
+  <ol>
+    <li><strong>Eligibility & Uniqueness:</strong> Strictly verify the identity of the voter and guarantee that no person can cast more than one ballot.</li>
+    <li><strong>Unconditional Privacy (Secret Ballot):</strong> Prevent the server, election officers, observers, or blockchain miners from discovering who voted for whom.</li>
+    <li><strong>Immutable Public Verifiability:</strong> Provide mathematical certainty to both the voter and the public that all cast ballots were accurately recorded and cannot be altered retrospectively.</li>
+  </ol>
+
+  <h2>1.3 Objectives of VoteX</h2>
+  <ul>
+    <li>Implement a <strong>3-factor voter authentication pipeline</strong> combining Room Access Credentials, Cellular SMS Verification via Twilio Verify, and Biometric Identity Certification.</li>
+    <li>Engineer a <strong>dual-biometric engine</strong> supporting both 128-dimensional facial recognition with calibrated Euclidean distance matching and WebAuthn hardware passkeys/fingerprints.</li>
+    <li>Develop and deploy an <strong>Ethereum smart contract (<code>ElectionRegistry.sol</code>)</strong> that records votes using cryptographic commitments to eliminate double-voting while safeguarding secrecy.</li>
+    <li>Create a <strong>multi-tenant Election Room subsystem</strong> allowing institutions to run 50+ simultaneous elections in parallel with isolated candidate rosters and voter populations.</li>
+    <li>Deliver <strong>real-time turnout analytics</strong> via WebSocket event streaming paired with public receipt verification tools.</li>
+  </ul>
+
+  <!-- CHAPTER 2 -->
+  
+  <h1 style="break-before: page;">Chapter 2: System Architecture & Technologies</h1>
+
+  <h2>2.1 High-Level 3-Tier Architecture</h2>
+  <p>
+    VoteX is structured into three cleanly decoupled layers: the Presentation Layer (Client), the Application & Verification Layer (Server), and the Persistence & Consensus Layer (Database & Blockchain):
+  </p>
+
+  <div class="card">
+    <h3 style="margin-top:0;">Layer 1: Presentation Tier (React 18 + TypeScript + Vite)</h3>
+    <p>A responsive, mobile-first single-page application utilizing glassmorphic aesthetics, dark theme tokens, real-time camera capture streams, and interactive voting ballots.</p>
+
+    <h3>Layer 2: Application Tier (Node.js + Express + TypeScript)</h3>
+    <p>Stateless REST API gateway enforcing rate limiting, JWT session cookies, Twilio Verify API telephony communication, server-side Euclidean biometric vector computation, and AlaSQL/MySQL transactional management.</p>
+
+    <h3>Layer 3: Consensus & Persistence Tier (EVM Smart Contract + SQL)</h3>
+    <p><code>ElectionRegistry.sol</code> compiled via Hardhat for immutable on-chain ballot recording, complemented by relational SQL tables for election metadata, candidate profiles, and immutable audit logs.</p>
+  </div>
+
+  <h2>2.2 Technology Stack Matrix</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 25%;">Domain</th>
+        <th style="width: 35%;">Technology Selected</th>
+        <th style="width: 40%;">Architectural Justification</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Frontend Framework</strong></td>
+        <td>React 18 &bull; Vite &bull; TypeScript</td>
+        <td>Zero-lag virtual DOM rendering, type-safe interfaces, instant HMR development.</td>
+      </tr>
+      <tr>
+        <td><strong>Backend Runtime</strong></td>
+        <td>Node.js &bull; Express.js &bull; TypeScript</td>
+        <td>Non-blocking asynchronous event loop capable of managing thousands of concurrent requests.</td>
+      </tr>
+      <tr>
+        <td><strong>Smart Contract</strong></td>
+        <td>Solidity ^0.8.20 &bull; OpenZeppelin Ownable</td>
+        <td>Industry-standard EVM smart contract language with compile-time overflow protection.</td>
+      </tr>
+      <tr>
+        <td><strong>Web3 Client</strong></td>
+        <td>Ethers.js v6</td>
+        <td>Cryptographic wallet signing, JSON-RPC provider abstraction, contract event listeners.</td>
+      </tr>
+      <tr>
+        <td><strong>Telephony Gateway</strong></td>
+        <td>Twilio Verify v2 REST API</td>
+        <td>Carrier-grade live cellular SMS delivery to international and Indian mobile subscribers.</td>
+      </tr>
+      <tr>
+        <td><strong>Neural Vision</strong></td>
+        <td>face-api.js &bull; TensorFlow.js &bull; SSD MobileNet</td>
+        <td>Client-side 68-landmark detection and 128D facial feature extraction without uploading raw video.</td>
+      </tr>
+      <tr>
+        <td><strong>Hardware Biometrics</strong></td>
+        <td>WebAuthn / FIDO2 Passkeys</td>
+        <td>Device-native biometric enrollment utilizing secure enclave fingerprint sensors.</td>
+      </tr>
+      <tr>
+        <td><strong>Database</strong></td>
+        <td>MySQL 8.0 / Embedded AlaSQL Fallback</td>
+        <td>ACID relational integrity with automatic zero-dependency in-memory SQL execution.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- CHAPTER 3 -->
+  <h1 style="break-before: page;">Chapter 3: Core Functional Modules</h1>
+
+  <h2>3.1 Module 1: Two-Factor Cellular SMS Verification</h2>
+  <p>
+    Voter authentication begins with phone number verification. To prevent unauthorized account access and eliminate simulated test codes in production, VoteX integrates the <strong>Twilio Verify v2 API</strong>:
+  </p>
+  <ul>
+    <li><strong>Carrier Dispatch:</strong> When the voter requests an OTP, VoteX issues an authenticated <code>POST /v2/Services/{SERVICE_SID}/Verifications</code> request to Twilio. Twilio generates a cryptographically secure 6-digit passcode and transmits it across the cellular carrier network to the voter's physical handset.</li>
+    <li><strong>Zero Website Leakage:</strong> The server never returns the OTP in the HTTP response JSON. The client displays no on-screen code or auto-fill buttons.</li>
+    <li><strong>Carrier-Grade Validation:</strong> When the voter submits their 6-digit code, the server submits it to <code>/VerificationCheck</code>. Only if Twilio responds with <code>valid: true</code> does the voter gain authorization to proceed to the biometric checkpoint.</li>
+  </ul>
+
+  <h2>3.2 Module 2: Dual Biometric Verification Engine</h2>
+  <p>
+    VoteX offers two distinct biometric authentication pathways to ensure maximum accessibility across diverse device hardware:
+  </p>
+  
+  <h3>Pathway A: 128-Dimensional Neural Facial Euclidean Distance</h3>
+  <p>
+    When face recognition is selected, the client streams the user's camera feed through an SSD MobileNet neural network. It extracts a 128-element floating-point descriptor representing invariant facial features (nodal points, eye socket depth, jawline contour).
+  </p>
+  <p>
+    The server compares the live vector <em>L</em> against the registered reference vector <em>R</em> enrolled during voter registration by calculating the Euclidean distance metric:
+  </p>
+  <div class="math-formula">
+    d(L, R) = &radic;( &Sigma;<sub>i=1..128</sub> (L<sub>i</sub> - R<sub>i</sub>)&sup2; )
+  </div>
+  <p>
+    Through extensive empirical calibration, VoteX enforces a strict threshold of <strong>d &le; 0.54</strong>. Distances below 0.54 certify positive human identification, while higher distances trigger immediate rejection and security audit logging.
+  </p>
+
+  <h3>Pathway B: Hardware WebAuthn Fingerprint Passkeys</h3>
+  <p>
+    For devices equipped with fingerprint scanners or touch ID sensors, VoteX invokes the W3C WebAuthn browser API. The voter provides their fingerprint to their hardware secure enclave, generating a cryptographically signed authentication assertion verified by the server.
+  </p>
+
+  <!-- CHAPTER 4 -->
+  
+  <h1 style="break-before: page;">Chapter 4: Blockchain Smart Contract & Voter Privacy</h1>
+
+  <h2>4.1 Cryptographic Voter Commitments</h2>
+  <p>
+    To guarantee voter anonymity while preventing double-voting, VoteX decouples the voter's identity using a one-way salted hash:
+  </p>
+  <div class="math-formula">
+    voterCommitment = SHA-256( Voter_ID + Server_Salt )
+  </div>
+  <p>
+    This produces a 32-byte hash (e.g. <code>0x7f83b165...</code>). The blockchain contract maintains a mapping:
+  </p>
+  <pre><code>mapping(bytes32 =&gt; bool) hasVotedMapping;</code></pre>
+  <p>
+    When a vote is cast, the contract checks:
+  </p>
+  <pre><code>require(!election.hasVotedMapping[voterCommitment], "Voter has already voted");
+election.hasVotedMapping[voterCommitment] = true;</code></pre>
+  <p>
+    Because the candidate selection (<code>voteCounts[candidateId] += 1</code>) is updated independently, no observer, miner, or administrator can ever connect the commitment hash to the chosen candidate.
+  </p>
+
+  <h2>4.2 Running 50+ Concurrent Elections (Multi-Tenancy)</h2>
+  <p>
+    VoteX is engineered to manage high-volume institutional elections where dozens of departmental or club elections take place simultaneously.
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 28%;">Isolation Dimension</th>
+        <th style="width: 72%;">Implementation in VoteX</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>On-Chain Storage Partitioning</strong></td>
+        <td>Each election is indexed by <code>bytes32 electionId</code> in <code>mapping(bytes32 =&gt; Election) private elections</code>. Storage slots for Room #1 and Room #50 are completely isolated.</td>
+      </tr>
+      <tr>
+        <td><strong>Independent Voter Roster</strong></td>
+        <td>Voter participation is tracked per room in the junction table <code>room_voters (election_id, voter_id, has_voted)</code>. A student voting in Election #1 retains an eligible <code>has_voted = 0</code> status in Election #2 through Election #50.</td>
+      </tr>
+      <tr>
+        <td><strong>Delegated Administration</strong></td>
+        <td>Super administrators can assign specific Election Rooms to departmental officers. Department admins cannot view, edit, or tamper with votes in other rooms.</td>
+      </tr>
+      <tr>
+        <td><strong>Independent Time Windows</strong></td>
+        <td>Each room specifies its own <code>start_time</code> and <code>end_time</code>. Rooms automatically open and close according to their programmed schedule.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- CHAPTER 5 -->
+  <h1 style="break-before: page;">Chapter 5: Verification, Security & Results</h1>
+
+  <h2>5.1 End-to-End Cryptographic Receipt Verification</h2>
+  <p>
+    Upon casting a ballot, the voter receives an on-chain receipt code (e.g. <code>VTX-A8F291CB</code>), a transaction hash, and a block number:
+  </p>
+  <pre><code>function verifyReceipt(bytes32 electionId, string memory receiptId) 
+    external view returns (bool exists, bytes32 proofHash, uint256 timestamp);</code></pre>
+  <p>
+    Any voter can paste their receipt code into the public verification portal to inspect the cryptographic proof hash and block timestamp directly on the blockchain ledger, confirming their ballot was included in the certified tally.
+  </p>
+
+  <h2>5.2 Comprehensive Security Threat Model</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 25%;">Threat / Attack Vector</th>
+        <th style="width: 35%;">Potential Vulnerability</th>
+        <th style="width: 40%;">VoteX Defense Mechanism</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Database Tally Tampering</strong></td>
+        <td>Admin changes SQL vote table.</td>
+        <td><strong>Blocked.</strong> Final tallies are computed by the Ethereum smart contract; database only caches results.</td>
+      </tr>
+      <tr>
+        <td><strong>Voter Impersonation</strong></td>
+        <td>Stolen voter ID credentials.</td>
+        <td><strong>Blocked.</strong> Requires 2FA cellular phone access (Twilio SMS) AND live facial or fingerprint biometrics.</td>
+      </tr>
+      <tr>
+        <td><strong>Double Voting</strong></td>
+        <td>Voter attempts voting multiple times.</td>
+        <td><strong>Blocked.</strong> Enforced at 3 levels: Database constraint, API controller lock, and Smart Contract revert.</td>
+      </tr>
+      <tr>
+        <td><strong>Biometric Presentation Attack</strong></td>
+        <td>Attacker holds up a printed photo.</td>
+        <td><strong>Blocked.</strong> Anti-spoof liveness verification checks for dynamic micro-expressions and real human eye blinking.</td>
+      </tr>
+      <tr>
+        <td><strong>Ballot Secrecy Violation</strong></td>
+        <td>Correlating voter identity with vote.</td>
+        <td><strong>Prevented.</strong> One-way salted commitments decouple human identity from candidate choices.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>5.3 Conclusion & Future Enhancements</h2>
+  <p>
+    The VoteX project demonstrates that digital voting can achieve institutional-grade security, mathematical transparency, and complete privacy without sacrificing user convenience. By combining carrier-verified cellular SMS, calibrated neural biometrics, and Ethereum smart contracts, VoteX bridges the gap between paper ballot trust and digital speed.
+  </p>
+  <p>
+    <strong>Future Scope:</strong> Upcoming iterations will integrate <strong>Zero-Knowledge SNARKs (zk-SNARKs)</strong> for complete client-side zero-knowledge proof generation, off-chain Layer-2 rollups (such as Arbitrum or Polygon zkEVM) for sub-cent gas fees during mega-elections, and decentralized IPFS photo storage for voter registries.
+  </p>
+
+  <div class="card" style="text-align: center; margin-top: 16px; font-size: 8.5pt; color: #64748b;">
+    VoteX Digital Voting System &bull; Project Report &copy; 2026 &bull; Certified by Gnanesh K R
+  </div>
+
+</body>
+</html>

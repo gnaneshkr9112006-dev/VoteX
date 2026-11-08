@@ -48,7 +48,6 @@ contract ElectionRegistry is Ownable {
      */
     function createElection(bytes32 electionId, string[] memory candidateIds) external onlyOwner {
         require(!elections[electionId].exists, "Election already exists");
-        require(candidateIds.length > 0, "No candidates provided");
 
         Election storage newElection = elections[electionId];
         newElection.exists = true;
@@ -56,6 +55,23 @@ contract ElectionRegistry is Ownable {
         newElection.candidateIds = candidateIds;
 
         emit ElectionCreated(electionId, msg.sender);
+    }
+
+    /**
+     * @dev Adds a candidate to an existing election.
+     * @param electionId The unique identifier for the election.
+     * @param candidateId The identifier of the candidate.
+     */
+    function addCandidate(bytes32 electionId, string memory candidateId) external onlyOwner {
+        Election storage election = elections[electionId];
+        require(election.exists, "Election does not exist");
+        for (uint256 i = 0; i < election.candidateIds.length; i++) {
+            require(
+                keccak256(bytes(election.candidateIds[i])) != keccak256(bytes(candidateId)),
+                "Candidate already exists"
+            );
+        }
+        election.candidateIds.push(candidateId);
     }
 
     /**

@@ -1,5 +1,7 @@
 import express from 'express';
 import http from 'http';
+import path from 'path';
+import fs from 'fs';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -56,6 +58,33 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
+// PDF Report Downloads
+app.get('/api/reports/download/project-report', (_req, res) => {
+  const candidates = [
+    path.resolve(__dirname, '../../VoteX_Project_Report.pdf'),
+    path.resolve(process.cwd(), 'VoteX_Project_Report.pdf'),
+    path.resolve(process.cwd(), 'client/public/VoteX_Project_Report.pdf')
+  ];
+  const found = candidates.find(p => fs.existsSync(p));
+  if (found) {
+    return res.download(found, 'VoteX_Project_Report.pdf');
+  }
+  res.status(404).json({ message: 'Project report PDF not found' });
+});
+
+app.get('/api/reports/download/blockchain-architecture', (_req, res) => {
+  const candidates = [
+    path.resolve(__dirname, '../../VoteX_Blockchain_Architecture.pdf'),
+    path.resolve(process.cwd(), 'VoteX_Blockchain_Architecture.pdf'),
+    path.resolve(process.cwd(), 'client/public/VoteX_Blockchain_Architecture.pdf')
+  ];
+  const found = candidates.find(p => fs.existsSync(p));
+  if (found) {
+    return res.download(found, 'VoteX_Blockchain_Architecture.pdf');
+  }
+  res.status(404).json({ message: 'Blockchain architecture PDF not found' });
+});
+
 const startServer = async () => {
   try {
     console.log('🗳️  VoteX Server Starting...');
@@ -82,7 +111,7 @@ const startServer = async () => {
     }
 
     // Start server
-    server.listen(config.port, () => {
+    server.listen(config.port, '0.0.0.0', () => {
       console.log(`\n🚀 VoteX server running on http://localhost:${config.port}`);
       console.log(`   Client URL: ${config.clientUrl}`);
       console.log(`   API: http://localhost:${config.port}/api\n`);

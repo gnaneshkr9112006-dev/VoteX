@@ -16,12 +16,9 @@ export const getResults = async (req: Request, res: Response) => {
       return res.status(403).json({ message: 'Results have not been published yet' });
     }
 
-    // Get candidate vote counts from MySQL
+    // Get candidates for the election
     const [candidates]: any = await pool.query(
-      `SELECT c.id, c.candidate_code, c.name, c.party,
-              (SELECT COUNT(*) FROM vote_receipts vr
-               JOIN blockchain_transactions bt ON vr.tx_hash = bt.tx_hash
-               WHERE bt.election_id = c.election_id AND bt.action_type = 'VOTE_CAST') as blockchain_votes
+      `SELECT c.id, c.candidate_code, c.name, c.party
        FROM candidates c
        WHERE c.election_id = ?
        ORDER BY c.name ASC`,
@@ -64,10 +61,10 @@ export const getResults = async (req: Request, res: Response) => {
         party: c.party,
         votes: onchainVotes.has(c.candidate_code)
           ? onchainVotes.get(c.candidate_code)
-          : (c.blockchain_votes || 0)
+          : 0
       })),
-      totalVotes: voteStats[0].total_votes || 0,
-      totalVoters: totalVoters[0].voter_count ?? totalVoters[0].total ?? 0
+      totalVotes: voteStats[0]?.total_votes || 0,
+      totalVoters: totalVoters[0]?.voter_count ?? totalVoters[0]?.total ?? 0
     });
   } catch (error) {
     console.error('Get results error:', error);
@@ -135,8 +132,8 @@ export const getPublicResults = async (req: Request, res: Response) => {
           ? onchainVotes.get(c.candidate_code)
           : 0
       })),
-      totalVotes: voteStats[0].total_votes || 0,
-      totalVoters: totalVoters[0].voter_count ?? totalVoters[0].total ?? 0
+      totalVotes: voteStats[0]?.total_votes || 0,
+      totalVoters: totalVoters[0]?.voter_count ?? totalVoters[0]?.['[voter_count]'] ?? totalVoters[0]?.total ?? 0
     });
   } catch (error) {
     console.error('Get public results error:', error);

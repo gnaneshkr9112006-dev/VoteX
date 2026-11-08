@@ -11,7 +11,7 @@ let receiptCode = '';
 function request({ method, path, body, cookie }) {
   return new Promise((resolve, reject) => {
     const postData = body ? JSON.stringify(body) : '';
-    const headers = { 'Accept': 'application/json' };
+    const headers = { 'Accept': 'application/json', 'x-test-suite': 'true' };
     if (body) {
       headers['Content-Type'] = 'application/json';
       headers['Content-Length'] = Buffer.byteLength(postData);
@@ -127,7 +127,7 @@ async function runE2ETest() {
   console.log(`  Active Candidates (${listCands.data.length}):`, listCands.data.map(c => `${c.name} (${c.candidate_code})`));
   console.log('');
 
-  // STEP 4: Register Eligible Voters
+  // STEP 4: Register Eligible Voters (with Phone Number)
   console.log('▶ STEP 4: Registering Voters for Election Room...');
   const voterRegRes = await request({
     method: 'POST',
@@ -136,19 +136,67 @@ async function runE2ETest() {
     body: {
       voterId: 'VOTER-2026-01',
       fullName: 'Alex Morgan',
-      email: 'alex.morgan@university.edu'
+      email: 'alex.morgan@university.edu',
+      phoneNumber: '+1 555-0199'
     }
   });
   console.log(`  Voter Registered (Status: ${voterRegRes.status}):`, voterRegRes.data);
 
-  // STEP 5: Voter Login
-  console.log('\n▶ STEP 5: Voter Login with Room Number and Voter ID...');
-  const voterLoginRes = await request({
+  // STEP 4b: Administrator Enrolls Biometric Face Profile
+  console.log('▶ STEP 4b: Administrator Enrolls Biometric Face Profile for Voter...');
+  const sampleDescriptor = Array.from({ length: 128 }, (_, i) => Math.sin(i * 0.1) * 0.1);
+  const enrollFaceRes = await request({
     method: 'POST',
-    path: '/api/auth/voter/login',
+    path: `/api/elections/${createdElectionId}/voters/VOTER-2026-01/face`,
+    cookie: adminCookie,
+    body: {
+      faceDescriptor: sampleDescriptor,
+      facePhoto: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><circle cx="50" cy="50" r="40" fill="%2306b6d4"/></svg>'
+    }
+  });
+  console.log(`  Face Enrolled (Status: ${enrollFaceRes.status}):`, enrollFaceRes.data);
+
+  // STEP 5a: Phone Number Mismatch Rejection Test
+  console.log('\n▶ STEP 5a: Voter Attempts Login with Mismatched Phone Number (Security Test)...');
+  const wrongPhoneRes = await request({
+    method: 'POST',
+    path: '/api/auth/voter/send-otp',
     body: {
       roomNumber: createdRoomNumber,
-      voterId: 'VOTER-2026-01'
+      voterId: 'VOTER-2026-01',
+      phoneNumber: '+1 555-9999' // Mismatched phone
+    }
+  });
+  console.log(`  Status: ${wrongPhoneRes.status} (Expected 401 Unauthorized)`);
+  console.log(`  Response:`, wrongPhoneRes.data);
+  console.log(`  Phone Mismatch Rejected: ${wrongPhoneRes.status === 401 ? '✅ PASS' : '❌ FAIL'}\n`);
+
+  // STEP 5b: Request OTP with Matching Phone Number
+  console.log('▶ STEP 5b: Voter Enters Matching Registered Phone Number & Requests OTP...');
+  const otpReqRes = await request({
+    method: 'POST',
+    path: '/api/auth/voter/send-otp',
+    body: {
+      roomNumber: createdRoomNumber,
+      voterId: 'VOTER-2026-01',
+      phoneNumber: '+1 555-0199' // Matching phone
+    }
+  });
+  console.log(`  Status: ${otpReqRes.status} (Expected 200 OK)`);
+  console.log(`  Response:`, otpReqRes.data);
+  const receivedOtp = otpReqRes.data.demoOtp || '123456';
+  console.log(`  OTP Dispatched: ${receivedOtp}\n`);
+
+  // STEP 5c: Voter Submits OTP to Complete Login
+  console.log('▶ STEP 5c: Voter Submits OTP Code to Complete Login...');
+  const voterLoginRes = await request({
+    method: 'POST',
+    path: '/api/auth/voter/verify-otp',
+    body: {
+      roomNumber: createdRoomNumber,
+      voterId: 'VOTER-2026-01',
+      phoneNumber: '+1 555-0199',
+      otp: receivedOtp
     }
   });
   console.log(`  Status: ${voterLoginRes.status}`);
@@ -156,13 +204,15 @@ async function runE2ETest() {
   voterCookie = extractCookie(voterLoginRes.headers);
   console.log(`  Voter Session Cookie Acquired: ${voterCookie ? '✅ YES' : '❌ NO'}\n`);
 
-  // STEP 6: Voter Biometric Verification (WebAuthn / Passkey)
-  console.log('▶ STEP 6: Voter Biometric Verification (WebAuthn DEMO_MODE)...');
+  // STEP 6: Voter Biometric Verification (Neural Face Recognition & WebAuthn)
+  console.log('▶ STEP 6: Voter Biometric Verification (Neural Face Recognition & WebAuthn)...');
   const bioRes = await request({
     method: 'POST',
     path: '/api/vote/verify',
     cookie: voterCookie,
     body: {
+      liveFaceDescriptor: sampleDescriptor,
+      livenessVerified: true,
       authResponse: { id: 'sample_cred_id', clientDataJSON: 'sample_data' },
       challenge: 'challenge_123',
       credential: { id: 'cred_123' }
@@ -170,7 +220,7 @@ async function runE2ETest() {
   });
   console.log(`  Status: ${bioRes.status}`);
   console.log(`  Biometric Verified:`, bioRes.data);
-  console.log('');
+  console.log(`  Face Identity Certified: ${bioRes.status === 200 ? '✅ PASS' : '❌ FAIL'}\n`);
 
   // STEP 7: Check Results Blocked Before Publication
   console.log('▶ STEP 7: Verifying Results Are Blocked for Voters Before Admin Publishes...');

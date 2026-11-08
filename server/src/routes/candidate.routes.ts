@@ -3,12 +3,11 @@ import { addCandidate, editCandidate, removeCandidate, listCandidates } from '..
 import { verifyToken, requireAdmin } from '../middleware/auth';
 
 const router = Router();
+const adminAuth = [verifyToken, requireAdmin];
 
 router.get('/:id/candidates', listCandidates);
-
-router.use(verifyToken, requireAdmin);
-router.post('/:id/candidates', addCandidate);
-router.put('/:id/candidates/:candidateId', editCandidate);
-router.delete('/:id/candidates/:candidateId', removeCandidate);
+router.post('/:id/candidates', ...adminAuth, addCandidate);
+router.put('/:id/candidates/:candidateId', ...adminAuth, editCandidate);
+router.delete('/:id/candidates/:candidateId', ...adminAuth, removeCandidate);
 
 export default router;

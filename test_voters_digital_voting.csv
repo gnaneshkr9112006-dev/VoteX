@@ -1,0 +1,11 @@
+name,gmail,voterid_number,photoverification
+Aarav Sharma,aarav.sharma.test@example.com,TESTVOTER001,verified
+Diya Nair,diya.nair.test@example.com,TESTVOTER002,verified
+Rohan Kumar,rohan.kumar.test@example.com,TESTVOTER003,verified
+Ananya Rao,ananya.rao.test@example.com,TESTVOTER004,verified
+Vikram Patel,vikram.patel.test@example.com,TESTVOTER005,verified
+Meera Iyer,meera.iyer.test@example.com,TESTVOTER006,verified
+Arjun Menon,arjun.menon.test@example.com,TESTVOTER007,pending
+Kavya Reddy,kavya.reddy.test@example.com,TESTVOTER008,verified
+Aditya Singh,aditya.singh.test@example.com,TESTVOTER009,failed
+Sneha Das,sneha.das.test@example.com,TESTVOTER010,verified
